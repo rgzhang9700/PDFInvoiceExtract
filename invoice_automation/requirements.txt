@@ -1,0 +1,7 @@
+pyyaml
+pdfplumber
+openpyxl
+easyocr
+pdf2image
+numpy
+pillow
