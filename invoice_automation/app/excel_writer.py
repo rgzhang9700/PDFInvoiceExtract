@@ -128,9 +128,9 @@ def set_date_if_exists(ws, row, headers, header_name, value):
 
 def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, line_number):
     amount = invoice.get("amount", "")
-    invoice_date = invoice.get("invoice_date") or datetime.today().strftime("%Y-%m-%d")
-    posting_date = datetime.today().strftime("%Y-%m-%d")
-
+    invoice_date = invoice.get("invoice_date") or datetime.today().strftime("%m/%d/%y")
+    posting_date = datetime.today().strftime("%m/%d/%y")
+    TaxCenterID = invoice.get("TaxCenterID", "")
     # Always write column A so the record is visible.
     ws.cell(row=row, column=1).value = line_number
 
@@ -140,36 +140,25 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     set_if_exists(ws, row, headers, "ITEMID", line_number)
 
     set_if_exists(ws, row, headers, "COMPANYCODE", vendor_config.get("company_code", ""))
-    set_if_exists(
-        ws,
-        row,
-        headers,
-        "SUPPLIERINVOICETRANSACTIONTYPE",
-        excel_config.get("supplier_invoice_transaction_type", "1"),
-    )
+    set_if_exists(ws, row, headers, "SUPPLIERINVOICETRANSACTIONTYPE", excel_config.get("supplier_invoice_transaction_type", "1"), )
     set_if_exists(ws, row, headers, "INVOICINGPARTY", vendor_config.get("vendor_code", ""))
     set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", invoice.get("invoice_number", ""))
     set_date_if_exists(ws, row, headers, "DOCUMENTDATE", invoice_date)
     set_date_if_exists(ws, row, headers, "POSTINGDATE", posting_date)
     set_if_exists(ws, row, headers, "ACCOUNTINGDOCUMENTTYPE", excel_config.get("accounting_document_type", "NS"))
-    set_if_exists(
-        ws,
-        row,
-        headers,
-        "ACCOUNTINGDOCUMENTHEADERTEXT",
-        f"{invoice.get('vendor_name', '')} Invoice {invoice.get('invoice_number', '')}",
-    )
+    set_if_exists(ws, row, headers,"ACCOUNTINGDOCUMENTHEADERTEXT", f"{invoice.get('vendor_name', '')} Invoice {invoice.get('invoice_number', '')}",)
     set_if_exists(ws, row, headers, "DOCUMENTCURRENCY", excel_config.get("document_currency", "USD"))
     set_if_exists(ws, row, headers, "INVOICEGROSSAMOUNT", amount)
 
     set_if_exists(ws, row, headers, "GLACCOUNT", vendor_config.get("gl_account", ""))
     set_if_exists(ws, row, headers, "DEBITCREDITCODE", "S")
-    set_if_exists(ws, row, headers, "GLACCOUNTCOMPANYCODE",vendor_config.get("company_code", ""))
     set_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMAMOUNT", amount)
     set_if_exists(ws, row, headers, "TAXCODE", vendor_config.get("tax_code", ""))
-    set_if_exists(ws, row, headers, "TAXJURISDICTION", vendor_config.get("tax_jurisdiction", ""))
+    set_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMTEXT", vendor_config.get("item_text", ""))
+    set_if_exists(ws, row, headers, "TAXJURISDICTION", TaxCenterID)
     set_if_exists(ws, row, headers, "COSTCENTER", vendor_config.get("cost_center", ""))
     set_if_exists(ws, row, headers, "DOCUMENTITEMTEXT", vendor_config.get("item_text", ""))
+    ws.cell(row=row,column=71).value = vendor_config.get("company_code", "")
 
 
 def resolve_path(client_root, path_value):

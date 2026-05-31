@@ -3,6 +3,7 @@ from datetime import datetime
 
 from .base import BaseInvoiceParser
 from .address_helpers import find_us_zip
+from .base import lookup_tax_center_id
 
 
 class FleetPrideParser(BaseInvoiceParser):
@@ -16,8 +17,7 @@ class FleetPrideParser(BaseInvoiceParser):
             "vendor_postcode": find_us_zip(vendor_address),
 
             "ship_to_address": ship_to_address,
-            "ship_to_postcode": self._find_postcode(ship_to_address),
-
+            "ship_to_postcode": self._find_ship_to_postcode(ship_to_address),
             "service_center_address": vendor_address,
             "service_center_postcode": find_us_zip(vendor_address),
 
@@ -25,6 +25,7 @@ class FleetPrideParser(BaseInvoiceParser):
             "invoice_date": self._find_invoice_date(text),
             "amount": self._find_total(text),
             "po_number": self._find_po_number(text),
+            "TaxCenterID": "lookup_tax_center_id(ship_to_postcode)",
         }
 
     def _find_postcode(self, address):
@@ -73,7 +74,7 @@ class FleetPrideParser(BaseInvoiceParser):
 
                 for fmt in ("%m/%d/%y", "%m/%d/%Y"):
                     try:
-                        return datetime.strptime(value, fmt).strftime("%Y-%m-%d")
+                        return datetime.strptime(value, fmt).strftime("%m/%d/%y")
                     except ValueError:
                         pass
 
@@ -209,3 +210,14 @@ class FleetPrideParser(BaseInvoiceParser):
 
         return ""
 
+    def _find_ship_to_postcode(self, ship_to_address):
+        if not ship_to_address:
+            return ""
+
+        # Match: WA 98683
+        m = re.search(r"\b[A-Z]{2}\s+(\d{5})(?:-\d{4})?\b", ship_to_address)
+
+        if m:
+            return m.group(1)
+
+        return ""

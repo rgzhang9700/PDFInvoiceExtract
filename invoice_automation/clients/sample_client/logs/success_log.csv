@@ -1,2 +1,0 @@
-vendor_folder,vendor_name,vendor_address,vendor_postcode,ship_to_address,ship_to_postcode,service_center_address,service_center_postcode,invoice_number,invoice_date,amount,po_number,pdf_type,pdf_file,processed_file_path,status,error
-FLEETPRIDE,FleetPride,,,10860 SW CLUTTER ST (360)-254-6920 SHERWOOD OR 97140-9563,97140-9563,,,749,2026-05-27,1070.0,,scanned_pdf,FLEETPRIDE INV # 134869923.pdf,clients\sample_client\processed\FLEETPRIDE\FLEETPRIDE INV # 134869923.pdf,success,

@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 from .base import BaseInvoiceParser
 from .address_helpers import find_us_zip
-
+from datetime import datetime
 
 class ValvolineParser(BaseInvoiceParser):
     def parse(self, text):
@@ -12,15 +12,16 @@ class ValvolineParser(BaseInvoiceParser):
         return {
             "vendor_name": "Valvoline",
             "vendor_address": service_address,
-            "vendor_postcode": find_us_zip(service_address),
+            "vendor_postcode": self._find_postcode(service_address),
+            "ship_to_postcode": self._find_postcode(ship_to_address),
             "ship_to_address": ship_to_address,
-            "ship_to_postcode": find_us_zip(ship_to_address),
             "service_center_address": service_address,
-            "service_center_postcode": find_us_zip(service_address),
+            "service_center_postcode": self._find_postcode(service_address),
             "invoice_number": self._find_invoice_number(text),
             "invoice_date": self._find_invoice_date(text),
             "amount": self._find_total(text),
             "po_number": self._find_po_number(text),
+            "TAXCenterID": "",
         }
 
     def _find_invoice_number(self, text):
@@ -43,7 +44,7 @@ class ValvolineParser(BaseInvoiceParser):
                 value = m.group(1)
                 for fmt in ("%m/%d/%Y", "%m/%d/%y"):
                     try:
-                        return datetime.strptime(value, fmt).strftime("%Y-%m-%d")
+                        return datetime.strptime(value, fmt).strftime("%m-%d-%y")
                     except ValueError:
                         pass
         return ""
@@ -72,25 +73,40 @@ class ValvolineParser(BaseInvoiceParser):
         return ""
 
     def _find_service_center_address(self, text):
-        lines = [x.strip() for x in text.splitlines() if x.strip()]
-        for i, line in enumerate(lines):
-            if "VALVOLINE INSTANT OIL CHANGE" in line.upper():
-                return ", ".join(lines[i:i + 7])
+        m = re.search(
+            r"VALVOLINE\s+INSTANT\s+OIL\s+CHANGE[\s\S]{0,300}?5020[\s\S]{0,100}?Corvallis,\s*OR\s*97333",
+            text,
+            re.IGNORECASE,
+        )
 
-        for i, line in enumerate(lines):
-            if "PHILOMATH" in line.upper() or "CORVALLIS, OR 97333" in line.upper():
-                return ", ".join(lines[max(0, i - 3):min(len(lines), i + 3)])
+        if m:
+            return " ".join(m.group(0).split())
 
         return ""
+    def _find_postcode(self, address):
 
+        if not address:
+            return ""
+
+        matches = re.findall(r"\b\d{5}\b", address)
+
+        if matches:
+            return matches[-1]
+
+        return ""
+        
     def _find_ship_to_address(self, text):
-        lines = [x.strip() for x in text.splitlines() if x.strip()]
-        for i, line in enumerate(lines):
-            if "CUSTOMER INFORMATION" in line.upper() or "GUEST INFORMATION" in line.upper():
-                return ", ".join(lines[i + 1:i + 7])
+        """
+        Valvoline uses GUEST INFORMATION as the customer/ship-to address.
+        """
 
-        for i, line in enumerate(lines):
-            if "97330" in line or "97383" in line:
-                return ", ".join(lines[max(0, i - 3):min(len(lines), i + 2)])
+        m = re.search(
+            r"GUEST\s+INFORMATION\s+([\s\S]{0,200}?)(?:VEHICLE\s+INFORMATION|SERVICE\s+CENTER\s+INFORMATION)",
+            text,
+            re.IGNORECASE,
+        )
+
+        if m:
+            return " ".join(m.group(1).split())
 
         return ""

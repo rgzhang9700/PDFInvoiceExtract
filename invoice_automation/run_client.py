@@ -8,7 +8,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--client-config",
-        default="clients/sample_client/config.yaml",
+        default="clients/northsky_comm/config.yaml",
         help="Path to client config YAML file"
     )
     args = parser.parse_args()

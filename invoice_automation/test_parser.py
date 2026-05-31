@@ -1,15 +1,20 @@
 from pathlib import Path
 import pdfplumber
 from app.pdf_text import extract_pdf_text
-
 from app.parsers.fleetpride_parser import FleetPrideParser
-pdf_file = r"C:\PYTHON\invoice_automation_full_project_v4\invoice_automation\clients\sample_client\processed\FLEETPRIDE\FLEETPRIDE INV # 134869923.pdf"
+from app.parsers.jiffy_lube_parser import JiffyLubeParser
+from app.parsers.les_schwab_parser import LesSchwabParser
+#pdf_file = r"C:\PYTHON\invoice_automation_full_project_v4\invoice_automation\clients\sample_client\processed\FLEETPRIDE\FLEETPRIDE INV # 134869923.pdf"
+#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\sample_client\downloads\OILVANDOR\MY FLEET CENTER INV # 99923980.pdf"
+pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\LESHWEB\66800415007.pdf"
 
 def main():
-
+    print(pdf_file)
     text, pdf_type = extract_pdf_text(pdf_file)
-    print("PDF Type:", pdf_type)
-    parser = FleetPrideParser()
+
+    #parser = FleetPrideParser()
+    #parser = JiffyLubeParser()
+    parser = LesSchwabParser()
 
     invoice = parser.parse(text)
 

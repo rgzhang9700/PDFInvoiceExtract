@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 from .base import BaseInvoiceParser
 from .address_helpers import find_address_near_keyword, find_first_city_state_zip_block
-
+from .base import lookup_tax_center_id
 
 class GenericParser(BaseInvoiceParser):
     def parse(self, text):
@@ -48,7 +48,7 @@ class GenericParser(BaseInvoiceParser):
                 value = m.group(1)
                 for fmt in ("%m/%d/%Y", "%Y-%m-%d"):
                     try:
-                        return datetime.strptime(value, fmt).strftime("%Y-%m-%d")
+                        return datetime.strptime(value, fmt).strftime("%m-%d-%y")
                     except ValueError:
                         pass
         return ""
