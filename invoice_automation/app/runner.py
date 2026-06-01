@@ -12,6 +12,7 @@ from app.parsers.generic_parser import GenericParser
 from app.parsers.valvoline_parser import ValvolineParser
 from app.parsers.fleetpride_parser import FleetPrideParser
 from app.parsers.jiffy_lube_parser import JiffyLubeParser
+from app.parsers.les_schwab_parser import LesSchwabParser
 from app.excel_writer import (
     write_invoices_to_vendor_template_batches,
     write_processing_summary_excel,
@@ -24,6 +25,9 @@ PARSERS = {
     "fleetpride": FleetPrideParser,
     "jiffylube": JiffyLubeParser,
     "jiffy_lube": JiffyLubeParser,
+    "les_schwab": LesSchwabParser,
+    "lesschwab": LesSchwabParser,
+    "leshweb": LesSchwabParser,
 }
 
 
@@ -49,6 +53,9 @@ def detect_parser(text, default_parser_name="generic"):
 
     if "FLEETPRIDE" in upper_text:
         return FleetPrideParser()
+
+    if "LES SCHWAB" in upper_text or "LESSCHWAB" in upper_text:
+        return LesSchwabParser()
 
     parser_class = PARSERS.get(default_parser_name, GenericParser)
     return parser_class()

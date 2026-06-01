@@ -5,3 +5,4 @@ easyocr
 pdf2image
 numpy
 pillow
+pandas
