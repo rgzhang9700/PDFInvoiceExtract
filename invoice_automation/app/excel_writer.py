@@ -59,6 +59,77 @@ def write_invoices_to_vendor_template_batches(invoices, vendor_config, excel_con
         print(f"Excel created: {output_file} with {len(batch_records)} records")
 
 
+def write_processing_summary_excel(successful_records, failed_records, output_file):
+    output_file = Path(output_file)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    wb = openpyxl.Workbook()
+
+    success_ws = wb.active
+    success_ws.title = "Successful Parses"
+    success_headers = [
+        "filename",
+        "invoice_number",
+        "invoice_date",
+        "total_amount",
+        "post_code",
+        "vendor_folder",
+        "vendor_name",
+        "status",
+    ]
+    success_ws.append(success_headers)
+
+    for record in successful_records:
+        success_ws.append([
+            record.get("pdf_file", ""),
+            record.get("invoice_number", ""),
+            record.get("invoice_date", ""),
+            record.get("amount", ""),
+            get_invoice_post_code(record),
+            record.get("vendor_folder", ""),
+            record.get("vendor_name", ""),
+            record.get("status", ""),
+        ])
+
+    failed_ws = wb.create_sheet("Failed Parses")
+    failed_headers = ["filename", "vendor_folder", "status", "error", "processed_file_path"]
+    failed_ws.append(failed_headers)
+
+    for record in failed_records:
+        failed_ws.append([
+            record.get("pdf_file", ""),
+            record.get("vendor_folder", ""),
+            record.get("status", "failed"),
+            record.get("error", ""),
+            record.get("processed_file_path", ""),
+        ])
+
+    for ws in (success_ws, failed_ws):
+        for column_cells in ws.columns:
+            max_length = max(
+                len(str(cell.value)) if cell.value is not None else 0
+                for cell in column_cells
+            )
+            ws.column_dimensions[column_cells[0].column_letter].width = min(max_length + 2, 60)
+
+    wb.save(output_file)
+    print(f"Processing summary Excel created: {output_file}")
+
+
+def get_invoice_post_code(invoice):
+    for key in (
+        "ship_to_postcode",
+        "service_center_postcode",
+        "vendor_postcode",
+        "post_code",
+        "postcode",
+    ):
+        value = invoice.get(key, "")
+        if value:
+            return value
+    return ""
+
+
 def find_header_row(ws):
     for row in range(1, ws.max_row + 1):
         values = [

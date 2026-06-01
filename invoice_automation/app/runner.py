@@ -12,7 +12,10 @@ from app.parsers.generic_parser import GenericParser
 from app.parsers.valvoline_parser import ValvolineParser
 from app.parsers.fleetpride_parser import FleetPrideParser
 from app.parsers.jiffy_lube_parser import JiffyLubeParser
-from app.excel_writer import write_invoices_to_vendor_template_batches
+from app.excel_writer import (
+    write_invoices_to_vendor_template_batches,
+    write_processing_summary_excel,
+)
 
 
 PARSERS = {
@@ -82,11 +85,13 @@ def run_client(config_path: Path):
 
     # One Excel file per run: collect all invoices first, then write once.
     all_invoices = []
+    successful_parse_records = []
+    failed_parse_records = []
     output_vendor_config = None
     vendor_summaries = {}
 
     for vendor_folder, vendor_config in config["vendors"].items():
-        invoices, summary = parse_vendor_folder(
+        invoices, successful_records, failed_records, summary = parse_vendor_folder(
             vendor_folder=vendor_folder,
             vendor_config=vendor_config,
             processing_config=config["processing"],
@@ -100,6 +105,8 @@ def run_client(config_path: Path):
         grand_total_found += summary["total_files_found"]
         grand_failed += summary["failed_count"]
         grand_duplicate += summary["duplicate_count"]
+        successful_parse_records.extend(successful_records)
+        failed_parse_records.extend(failed_records)
 
         if invoices:
             all_invoices.extend(invoices)
@@ -108,6 +115,20 @@ def run_client(config_path: Path):
             # as the output/template/GL config for this run.
             if output_vendor_config is None:
                 output_vendor_config = vendor_config
+
+    summary_excel_file = build_processing_summary_excel_path(
+        config=config,
+        client_root=client_root,
+    )
+
+    try:
+        write_processing_summary_excel(
+            successful_records=successful_parse_records,
+            failed_records=failed_parse_records,
+            output_file=summary_excel_file,
+        )
+    except Exception as e:
+        print(f"PROCESSING SUMMARY EXCEL WRITE FAILED: {e}")
 
     if all_invoices:
         try:
@@ -172,7 +193,35 @@ def run_client(config_path: Path):
     print(f"Total invoice files processed: {grand_success + grand_failed + grand_duplicate}")
     print("===================================")
 
-def parse_vendor_folder(vendor_folder, vendor_config, processing_config, client_root, logger, history, duplicate_check=True):
+
+def build_processing_summary_excel_path(config, client_root):
+    summary_config = config.get("summary_excel", {})
+    folder = resolve_path(
+        client_root,
+        summary_config.get(
+            "folder",
+            config.get("logging", {}).get("log_folder", "./logs"),
+        ),
+    )
+    filename = summary_config.get("filename")
+
+    if not filename:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename_prefix = summary_config.get("filename_prefix", "invoice_parse_summary")
+        filename = f"{filename_prefix}_{timestamp}.xlsx"
+
+    return folder / filename
+
+
+def parse_vendor_folder(
+    vendor_folder,
+    vendor_config,
+    processing_config,
+    client_root,
+    logger,
+    history,
+    duplicate_check=True,
+):
     default_parser_name = vendor_config.get("parser", "generic")
 
     input_folder = resolve_path(client_root, vendor_config["input_folder"])
@@ -186,9 +235,11 @@ def parse_vendor_folder(vendor_folder, vendor_config, processing_config, client_
     }
 
     invoices = []
+    successful_records = []
+    failed_records = []
 
     if not pdf_files:
-        return invoices, summary
+        return invoices, successful_records, failed_records, summary
 
     for pdf_file in pdf_files:
         print(f"Processing {vendor_folder}: {pdf_file.name}")
@@ -221,10 +272,15 @@ def parse_vendor_folder(vendor_folder, vendor_config, processing_config, client_
 
             invoice["invoice_key"] = invoice_key
 
+            successful_records.append(invoice.copy())
+
             if duplicate_check and history.exists(invoice_key):
                 summary["duplicate_count"] += 1
                 invoice["status"] = "duplicate_skipped"
                 invoice["error"] = "Duplicate invoice detected"
+
+                successful_records[-1]["status"] = "duplicate_skipped"
+                successful_records[-1]["error"] = "Duplicate invoice detected"
 
                 logger.write_error({
                     "vendor_folder": vendor_folder,
@@ -257,16 +313,19 @@ def parse_vendor_folder(vendor_folder, vendor_config, processing_config, client_
                     ),
                 )
 
-            logger.write_error({
+            failed_record = {
                 "vendor_folder": vendor_folder,
                 "pdf_file": pdf_file.name,
                 "processed_file_path": moved_path,
                 "status": "failed",
                 "error": str(e),
-            })
+            }
+            failed_records.append(failed_record)
+
+            logger.write_error(failed_record)
             print(f"FAILED {pdf_file.name}: {e}")
 
-    return invoices, summary
+    return invoices, successful_records, failed_records, summary
 
 
 def move_successful_invoices_after_excel(
