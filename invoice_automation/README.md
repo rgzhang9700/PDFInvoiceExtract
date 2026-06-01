@@ -11,6 +11,7 @@ This version supports:
 - Real PDF vs scanned image PDF auto-detection
 - EasyOCR OCR fallback
 - Success, error, and run summary logs
+- Summary Excel workbook for successful and failed PDF parses
 - Total invoice files processed
 - Processed/error folder movement
 - Duplicate invoice detection using SQLite
@@ -21,6 +22,23 @@ This version supports:
 ```bash
 pip install -r requirements.txt
 python run_client.py --client-config clients/sample_client/config.yaml
+```
+
+
+## Parse summary Excel
+
+Every run creates a parse summary workbook in the configured logging folder by default. The workbook contains:
+
+- `Successful Parses`: filename, invoice number, invoice date, total amount, post code, vendor folder, vendor name, and parse status.
+- `Failed Parses`: filename, vendor folder, status, error, and the failed/error folder path when the PDF was moved.
+
+Optional config can override the output location or filename:
+
+```yaml
+summary_excel:
+  folder: ./logs
+  filename_prefix: invoice_parse_summary
+  # filename: latest_invoice_parse_summary.xlsx
 ```
 
 ## Shared drive config
