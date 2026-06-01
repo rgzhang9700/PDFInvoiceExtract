@@ -171,11 +171,18 @@ def find_next_empty_row(ws, start_row, key_column=1):
     return row
 
 
-def set_if_exists(ws, row, headers, header_name, value):
+def set_if_exists(ws, row, headers, header_name, value=""):
+    """Set a worksheet cell when the template contains the target header.
+
+    Some template columns are optional and may intentionally be left blank.
+    Defaulting value to an empty string keeps those optional writes from
+    failing one-file Excel runs when a caller only needs to reserve the field.
+    """
     col = headers.get(header_name)
 
     if col:
         ws.cell(row=row, column=col).value = value
+
 
 def set_date_if_exists(ws, row, headers, header_name, value):
     col = headers.get(header_name)
@@ -211,13 +218,25 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     set_if_exists(ws, row, headers, "ITEMID", line_number)
 
     set_if_exists(ws, row, headers, "COMPANYCODE", vendor_config.get("company_code", ""))
-    set_if_exists(ws, row, headers, "SUPPLIERINVOICETRANSACTIONTYPE", excel_config.get("supplier_invoice_transaction_type", "1"), )
+    set_if_exists(
+        ws,
+        row,
+        headers,
+        "SUPPLIERINVOICETRANSACTIONTYPE",
+        excel_config.get("supplier_invoice_transaction_type", "1"),
+    )
     set_if_exists(ws, row, headers, "INVOICINGPARTY", vendor_config.get("vendor_code", ""))
     set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", invoice.get("invoice_number", ""))
     set_date_if_exists(ws, row, headers, "DOCUMENTDATE", invoice_date)
     set_date_if_exists(ws, row, headers, "POSTINGDATE", posting_date)
     set_if_exists(ws, row, headers, "ACCOUNTINGDOCUMENTTYPE", excel_config.get("accounting_document_type", "NS"))
-    set_if_exists(ws, row, headers,"ACCOUNTINGDOCUMENTHEADERTEXT", f"{invoice.get('vendor_name', '')} Invoice {invoice.get('invoice_number', '')}",)
+    set_if_exists(
+        ws,
+        row,
+        headers,
+        "ACCOUNTINGDOCUMENTHEADERTEXT",
+        f"{invoice.get('vendor_name', '')} Invoice {invoice.get('invoice_number', '')}",
+    )
     set_if_exists(ws, row, headers, "DOCUMENTCURRENCY", excel_config.get("document_currency", "USD"))
     set_if_exists(ws, row, headers, "INVOICEGROSSAMOUNT", amount)
 
@@ -229,7 +248,7 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     set_if_exists(ws, row, headers, "TAXJURISDICTION", TaxCenterID)
     set_if_exists(ws, row, headers, "COSTCENTER", vendor_config.get("cost_center", ""))
     set_if_exists(ws, row, headers, "DOCUMENTITEMTEXT", vendor_config.get("item_text", ""))
-    ws.cell(row=row,column=71).value = vendor_config.get("company_code", "")
+    ws.cell(row=row, column=71).value = vendor_config.get("company_code", "")
 
 
 def resolve_path(client_root, path_value):
