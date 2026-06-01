@@ -251,7 +251,6 @@ def parse_vendor_folder(
             print(f"Using parser: {parser.__class__.__name__}")
 
             invoice = parser.parse(text)
-            print(invoice)
 
             invoice["vendor_folder"] = vendor_folder
             invoice["pdf_type"] = pdf_type
