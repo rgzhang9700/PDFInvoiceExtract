@@ -138,8 +138,10 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     set_if_exists(ws, row, headers, "SUPPLIERINVOICEITEM", line_number)
     set_if_exists(ws, row, headers, "INVOICEID", line_number)
     set_if_exists(ws, row, headers, "ITEMID", line_number)
-
-    set_if_exists(ws, row, headers, "COMPANYCODE", vendor_config.get("company_code", ""))
+    if "Valvoline" in invoice.get("vendor_name",""):
+        set_if_exists(ws, row, headers, "V03884")
+    else:
+        set_if_exists(ws, row, headers, "COMPANYCODE", vendor_config.get("company_code", ""))
     set_if_exists(ws, row, headers, "SUPPLIERINVOICETRANSACTIONTYPE", excel_config.get("supplier_invoice_transaction_type", "1"), )
     set_if_exists(ws, row, headers, "INVOICINGPARTY", vendor_config.get("vendor_code", ""))
     set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", invoice.get("invoice_number", ""))
