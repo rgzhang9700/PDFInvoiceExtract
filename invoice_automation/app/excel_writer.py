@@ -15,11 +15,23 @@ def write_invoices_to_vendor_template_batches(invoices, vendor_config, excel_con
 
     if not invoices:
         print("No invoices to write.")
-        return
+        return []
+
+    if excel_config.get("output_mode", "batch").lower() == "append":
+        output_file = resolve_output_workbook(client_root, vendor_config, excel_config)
+        write_invoices_to_existing_or_template_workbook(
+            invoices=invoices,
+            template_file=template_file,
+            output_file=output_file,
+            vendor_config=vendor_config,
+            excel_config=excel_config,
+        )
+        return [output_file]
 
     max_records = int(excel_config.get("max_records_per_file", 50))
     file_prefix = vendor_config.get("file_prefix", "invoice_load")
     total_batches = math.ceil(len(invoices) / max_records)
+    output_files = []
 
     for batch_index in range(total_batches):
         batch_records = invoices[batch_index * max_records:(batch_index + 1) * max_records]
@@ -56,7 +68,66 @@ def write_invoices_to_vendor_template_batches(invoices, vendor_config, excel_con
             )
 
         wb.save(output_file)
+        output_files.append(output_file)
         print(f"Excel created: {output_file} with {len(batch_records)} records")
+
+    return output_files
+
+
+def resolve_output_workbook(client_root, vendor_config, excel_config):
+    output_file = (
+        vendor_config.get("output_file")
+        or vendor_config.get("output_workbook")
+        or excel_config.get("output_file")
+        or excel_config.get("output_workbook")
+    )
+
+    if output_file:
+        return resolve_path(client_root, output_file)
+
+    output_folder = resolve_path(client_root, vendor_config["output_folder"])
+    file_prefix = vendor_config.get("file_prefix", "invoice_load")
+    return output_folder / f"{file_prefix}.xlsx"
+
+
+def write_invoices_to_existing_or_template_workbook(
+    invoices,
+    template_file,
+    output_file,
+    vendor_config,
+    excel_config,
+):
+    output_file = Path(output_file)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    if not output_file.exists():
+        shutil.copy(template_file, output_file)
+
+    wb = openpyxl.load_workbook(output_file)
+    sheet_name = excel_config.get("sheet_name", "Data")
+
+    if sheet_name not in wb.sheetnames:
+        raise ValueError(f"Sheet '{sheet_name}' not found in output workbook: {output_file}")
+
+    ws = wb[sheet_name]
+    header_row = find_header_row(ws)
+    headers = build_header_map(ws, header_row)
+    start_row = find_next_empty_row(ws, header_row + 1)
+    first_line_number = count_existing_records(ws, header_row + 1) + 1
+
+    for index, invoice in enumerate(invoices):
+        write_invoice_row(
+            ws=ws,
+            row=start_row + index,
+            headers=headers,
+            invoice=invoice,
+            vendor_config=vendor_config,
+            excel_config=excel_config,
+            line_number=first_line_number + index,
+        )
+
+    wb.save(output_file)
+    print(f"Excel updated: {output_file} with {len(invoices)} new records")
 
 
 def write_processing_summary_excel(successful_records, failed_records, output_file):
@@ -169,6 +240,16 @@ def find_next_empty_row(ws, start_row, key_column=1):
         row += 1
 
     return row
+
+
+def count_existing_records(ws, start_row, key_column=1):
+    count = 0
+
+    for row in range(start_row, ws.max_row + 1):
+        if ws.cell(row=row, column=key_column).value not in (None, ""):
+            count += 1
+
+    return count
 
 
 def set_if_exists(ws, row, headers, header_name, value=""):
