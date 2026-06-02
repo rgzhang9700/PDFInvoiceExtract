@@ -1,9 +1,15 @@
+import tempfile
 import unittest
 from datetime import datetime
+from pathlib import Path
 
 import openpyxl
 
-from invoice_automation.app.excel_writer import set_if_exists, write_invoice_row
+from invoice_automation.app.excel_writer import (
+    set_if_exists,
+    write_invoice_row,
+    write_invoices_to_vendor_template_batches,
+)
 
 
 class ExcelWriterTests(unittest.TestCase):
@@ -89,6 +95,71 @@ class ExcelWriterTests(unittest.TestCase):
             ws.cell(row=2, column=headers["DOCUMENTDATE"]).value,
             datetime,
         )
+
+    def test_append_output_mode_adds_records_to_existing_workbook(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            template_file = root / "template.xlsx"
+            output_file = root / "G_drive" / "invoice_output.xlsx"
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Data"
+            headers = [
+                "SUPPLIERINVOICEITEM",
+                "COMPANYCODE",
+                "SUPPLIERINVOICEIDBYINVCGPARTY",
+                "DOCUMENTDATE",
+                "INVOICEGROSSAMOUNT",
+            ]
+            for col, header in enumerate(headers, start=1):
+                ws.cell(row=1, column=col).value = header
+            wb.save(template_file)
+
+            vendor_config = {
+                "template_file": str(template_file),
+                "output_folder": str(output_file.parent),
+                "output_file": str(output_file),
+                "company_code": "1000",
+            }
+            excel_config = {
+                "sheet_name": "Data",
+                "output_mode": "append",
+            }
+
+            write_invoices_to_vendor_template_batches(
+                invoices=[
+                    {
+                        "amount": "100.00",
+                        "invoice_date": "2026-05-31",
+                        "invoice_number": "INV-1",
+                    }
+                ],
+                vendor_config=vendor_config,
+                excel_config=excel_config,
+                client_root=root,
+            )
+            write_invoices_to_vendor_template_batches(
+                invoices=[
+                    {
+                        "amount": "200.00",
+                        "invoice_date": "2026-06-01",
+                        "invoice_number": "INV-2",
+                    }
+                ],
+                vendor_config=vendor_config,
+                excel_config=excel_config,
+                client_root=root,
+            )
+
+            output_wb = openpyxl.load_workbook(output_file)
+            output_ws = output_wb["Data"]
+
+            self.assertEqual(output_ws.cell(row=2, column=1).value, 1)
+            self.assertEqual(output_ws.cell(row=3, column=1).value, 2)
+            self.assertEqual(output_ws.cell(row=2, column=3).value, "INV-1")
+            self.assertEqual(output_ws.cell(row=3, column=3).value, "INV-2")
+            self.assertEqual(output_ws.cell(row=3, column=5).value, "200.00")
 
 
 if __name__ == "__main__":

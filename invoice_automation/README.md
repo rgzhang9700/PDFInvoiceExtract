@@ -70,6 +70,47 @@ rules:
     download_folder: "./downloads/FLEETPRIDE"
 ```
 
+
+## Email-to-G-drive append workflow
+
+To poll email, save incoming invoice PDFs to a shared/G-drive folder, parse them,
+and append each parsed invoice as a new row in one output workbook, run the same
+client command on a cloud schedule such as every 5 minutes. Configure email
+rules so their `download_folder` points at the G-drive input folder, configure
+the matching vendor `input_folder` to the same location, and set Excel
+`output_mode` to `append` with an `output_file` on the G drive:
+
+```yaml
+email:
+  enabled: true
+  accounts:
+    - name: AP inbox
+      imap_server: imap.example.com
+      email_user: ap@example.com
+      email_password: your_app_password
+      search_query: '(UNSEEN)'
+      mark_seen: true
+      rules:
+        - vendor: OILVENDOR
+          subject_contains: invoice
+          download_folder: "G:/Shared drives/AP Invoices/OILVENDOR"
+
+vendors:
+  OILVENDOR:
+    input_folder: "G:/Shared drives/AP Invoices/OILVENDOR"
+    template_file: "G:/Shared drives/AP Templates/InvoiceTemplate.xlsx"
+    output_folder: "G:/Shared drives/AP Output"
+    output_file: "G:/Shared drives/AP Output/invoice_output.xlsx"
+
+excel:
+  output_mode: append
+  sheet_name: Data
+```
+
+With `output_mode: append`, the workbook is created from the vendor template the
+first time it is needed. Later runs open the same output workbook, find the next
+empty row, and append only the new parsed invoice records.
+
 ## Build EXE
 
 ```bat
