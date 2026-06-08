@@ -8,10 +8,11 @@ from app.parsers.valvoline_parser import ValvolineParser
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\sample_client\downloads\OILVANDOR\MY FLEET CENTER INV # 99923980.pdf"
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\OILVENDOR\MY FLEET CENTER INV # 99923980.pdf"
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\OILVENDOR\VALVOLINE INV # 167142.pdf"
-#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\OILVENDOR\THE CHARLES MACHINE INV # 93968775.PDF"
-pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\OILVENDOR\FLEETPRIDE INV # 134882087.PDF"
+pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\THE CHARLES MACHINE INV # 93968775.PDF"
+pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\FLEETPRIDE INV # 134882087.PDF"
 pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf"
-
+#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\F005632-154281-001 - ENTERED.pdf"
+pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\67000553452.pdf"
 def main():
     print(pdf_file)
     text, pdf_type = extract_pdf_text(pdf_file)

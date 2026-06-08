@@ -63,21 +63,14 @@ excel:
   supplier_invoice_transaction_type: "1"
 
 vendors:
-  input_folder: "./downloads"
-  template_file: "./templates/Invoice_Template_no_PO.XLSX"
-  output_folder: "./output"
-  cost_center: "460020450"
-  tax_code: "I0"
-  FLEETPRIDE:
+  GENERAL:
+    input_folder: "./downloads"
+    template_file: "./templates/Invoice_Template_no_PO.XLSX"
+    output_folder: "./output"
+    cost_center: "460020450"
+    tax_code: "I0"
     parser: "ValvolineParser"
     gl_account: "51000100"
 
-  LESHWEB:
-    parser: "ValvolineParser"
-    gl_account: "51000230"
-    item_text: "LESHWEB Invoice"
 
-  OILVENDOR:
-    parser: "ValvolineParser"
-    gl_account: "51000230"
     

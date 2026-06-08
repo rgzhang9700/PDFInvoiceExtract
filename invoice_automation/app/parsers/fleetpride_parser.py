@@ -17,7 +17,7 @@ class FleetPrideParser(BaseInvoiceParser):
 
     def parse(self, text, ocr_results=None, image_width=None, image_height=None, source_path=None):
         text = text or ""
-        vendor_name = "FLEETPRIDE"
+        vendor_name = self._find_vendor_name(text)
         ship_to_postcode = self._ship_to_zip_from_2col_text(text)
 
         return {
@@ -33,19 +33,6 @@ class FleetPrideParser(BaseInvoiceParser):
             "CompanyCode": lookup_company_code(vendor_name),
             "TAXCenterID": lookup_tax_center_id(ship_to_postcode),
         }
-
-    def _find_vendor_name(self, text):
-        patterns = [
-            r"(VALVOLINE(?:\s+INSTANT\s+OIL\s+CHANGE)?)",
-            r"(jiffy\s*lube|jiffylube|jefflube)",
-            r"(THE\s+CHARLES\s+MACHINE\s+WORKS)",
-        ]
-
-        for pattern in patterns:
-            m = re.search(pattern, text, re.IGNORECASE)
-            if m:
-                return m.group(1).replace("jiffylube", "JIFFY LUBE")
-        return ""
         
     def _ship_to_zip_from_2col_text(self, text):
         lines = text.splitlines()
@@ -67,6 +54,7 @@ class FleetPrideParser(BaseInvoiceParser):
                 right_text.append(parts[-1])
 
         block = " ".join(right_text)
+        print (block)
 
         # Find ZIP after state in right column only
         matches = list(re.finditer(r"\b[A-Z]{2}\s+(\d{5})(?:-\d{4})?\b", block, re.I))
@@ -81,19 +69,30 @@ class FleetPrideParser(BaseInvoiceParser):
     # ------------------------------------------------------------
  
     def _extract_invoice_date(self, text):
-        text = text or ""
-        for pattern in [r"INVOICE\s+DATE[\s\S]{0,120}?(\d{1,2}/\d{1,2})\s+(\d{2})\s+\d{6,}", 
-                        r"INVOICE\s+DATE[\s\S]{0,40}?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
-                       ]:
-            m = re.search(pattern, text, re.IGNORECASE)
-            if m:
-                return m.group(1)
+        # Case 1: normal date, like 05/27/26
+        m = re.search(
+            r"INVOICE\s+DATE[\s\S]{0,150}?(\d{1,2}/\d{1,2}/\d{2,4})",
+            text,
+            re.I,
+        )
+        if m:
+            return m.group(1)
+
+        # Case 2: split date, like 05/27 then 26 then invoice number
+        m = re.search(
+            r"INVOICE\s+DATE[\s\S]{0,150}?(\d{1,2}/\d{1,2})\s+(\d{2,4})\s+\d{6,}",
+            text,
+            re.I,
+        )
+        if m:
+            return f"{m.group(1)}/{m.group(2)}"
+
         return ""
       
     def _extract_invoice_number(self, text):
         for pattern in [r"\bINVOICE\s+NUMBER\b[\s\S]{0,120}?(\d{6,})", 
                         r"INVOICE\s+NO\.?\s*\n\s*\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+(\d+)",
-                        r"\bINVOICE\b\s*(\d{6,})"
+                        r"\bINVOICE\b\s*(\d{6,})",
                        ]:
             m = re.search(pattern, text, re.IGNORECASE)
             if m:
@@ -103,10 +102,11 @@ class FleetPrideParser(BaseInvoiceParser):
 
     def _extract_balance_due(self, text):
         for pattern in [r"PLEASE\s+PAY\s*>?\s*THIS\s+TOTAL\s*>?\s*([0-9,]+\.\d{2})", 
-                         r"PLEASE\s+PAY[\s\S]{0,120}?([0-9][0-9,\s]*[.]\s*\d\s*\d)",
+                        r"PLEASE\s+PAY[\s\S]{0,120}?([0-9][0-9,\s]*[.]\s*\d\s*\d)",
+                        r"BALANCE\s+DUE[\s\S]{0,80}?\$?\s*([0-9][0-9,\s]*\.\s*\d{2})"
                        ]:
             m = re.search(pattern, text, re.IGNORECASE)
             if m:
-                return m.group(1)
+                return m.group(1).replace(",", "").replace(" ", "")
         return ""
        

@@ -4,3 +4,28 @@ FLEETPRIDE,DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf,,failed,no such
 FLEETPRIDE,F005632-154281-001 - ENTERED.pdf,,failed,Missing required fields: ['invoice_date']
 FLEETPRIDE,FLEETPRIDE INV # 134882087.PDF,,failed,no such group
 FLEETPRIDE,THE CHARLES MACHINE INV # 93968775.PDF,,failed,Missing required fields: ['amount']
+FLEETPRIDE,67000553452.pdf,,failed,"Missing required fields: ['invoice_number', 'invoice_date', 'amount']"
+FLEETPRIDE,DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf,,failed,no such group
+FLEETPRIDE,F005632-154281-001 - ENTERED.pdf,,failed,Missing required fields: ['invoice_date']
+FLEETPRIDE,FLEETPRIDE INV # 134882087.PDF,,failed,no such group
+FLEETPRIDE,THE CHARLES MACHINE INV # 93968775.PDF,,failed,Missing required fields: ['amount']
+FLEETPRIDE,67000553452.pdf,,failed,"Missing required fields: ['invoice_number', 'invoice_date', 'amount']"
+FLEETPRIDE,DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf,,failed,"Invalid invoice amount: 1,188.08"
+FLEETPRIDE,F005632-154281-001 - ENTERED.pdf,,failed,Missing required fields: ['invoice_date']
+FLEETPRIDE,FLEETPRIDE INV # 134882087.PDF,,failed,Missing required fields: ['amount']
+FLEETPRIDE,THE CHARLES MACHINE INV # 93968775.PDF,,failed,Missing required fields: ['amount']
+FLEETPRIDE,67000553452.pdf,,failed,"Missing required fields: ['invoice_number', 'invoice_date', 'amount']"
+FLEETPRIDE,DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf,,failed,"Invalid invoice amount: 1,188.08"
+FLEETPRIDE,67000553452.pdf,,failed,"Missing required fields: ['invoice_number', 'invoice_date', 'amount']"
+FLEETPRIDE,DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf,,failed,"Invalid invoice amount: 1,188.08"
+FLEETPRIDE,FLEETPRIDE INV # 134882087.PDF,,failed,"Invalid invoice amount: 1,148. 98"
+FLEETPRIDE,67000553452.pdf,,failed,"Missing required fields: ['invoice_number', 'invoice_date', 'amount']"
+FLEETPRIDE,DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf,,failed,no such group
+FLEETPRIDE,67000553452.pdf,,failed,"Missing required fields: ['invoice_number', 'invoice_date', 'amount']"
+FLEETPRIDE,DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf,,failed,Missing required fields: ['invoice_date']
+FLEETPRIDE,67000553452.pdf,,failed,'ValvolineParser' object has no attribute '_find_invoice_date'
+FLEETPRIDE,DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf,,failed,Missing required fields: ['invoice_date']
+GENERAL,67000553452.pdf,,failed,"Missing required fields: ['invoice_number', 'amount']"
+GENERAL,Invoice_882430_.pdf,,failed,Missing required fields: ['invoice_date']
+GENERAL,MY FLEET CENTER INV # 99923980.pdf,,failed,Missing required fields: ['invoice_date']
+GENERAL,THE CHARLES MACHINE INV # 93968775.PDF,,failed,Missing required fields: ['invoice_date']

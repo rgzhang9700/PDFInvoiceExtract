@@ -28,22 +28,7 @@ class ValvolineParser(BaseInvoiceParser):
             "amount": self._find_total(text),
             "po_number": self._find_po_number(text),
             "TAXCenterID": lookup_tax_center_id(postcode_lookup),
-        }
-
-    def _find_vendor_name(self, text):
-        patterns = [
-            r"(VALVOLINE(?:\s+INSTANT\s+OIL\s+CHANGE)?)",
-            r"(jiffy\s*lube|jiffylube|jefflube)",
-            r"(THE\s+CHARLES\s+MACHINE\s+WORKS)",
-            r"FLEETPRIDE",
-            r"DITCH WITCH",
-        ]
-
-        for pattern in patterns:
-            m = re.search(pattern, text, re.IGNORECASE)
-            if m:
-                return m.group(1).replace("jiffylube", "JIFFY LUBE")
-        return ""
+        }   
         
     def _find_invoice_number(self, text):
         for pattern in [r"Invoice\s+(\d+)", 
@@ -51,16 +36,18 @@ class ValvolineParser(BaseInvoiceParser):
                         r"Invoice\s*#?\s*(\d+)", 
                         r"Invoice #\s*:\s+(\d+)",
                         r"\bINVOICE\s+NUMBER\b[\s\S]{0,120}?(\d{6,})", 
-                        r"INVOICE\s+NO\.?\s*\n\s*\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+(\d+)",]:
+                        r"INVOICE\s+NO\.?\s*\n\s*\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+(\d+)",
+                        r"\bInvoice\s*:\s*(\d+)"]:
             m = re.search(pattern, text, re.IGNORECASE)
             if m:
                 return m.group(1)
         return ""
 
-    def _find_invoice_date(self, text):
+    def _find_invoice_date_old(self, text):
         patterns = [
             r"Invoice\s+\d+\s+(\d{1,2}/\d{1,2}/\d{4})",
             r"Date\s*:\s*(\d{2}/\d{2}/\d{4})",
+            r"\bInvoice\s+\d+\s+(\d{1,2}/\d{1,2}/\d{2,4})",
         ]
   
         for pattern in patterns:
@@ -73,11 +60,51 @@ class ValvolineParser(BaseInvoiceParser):
                     except ValueError:
                         pass
         return ""
+        
+    def _find_invoice_date(self, text):
+        text = text or ""
+
+        # Ditch Witch format:
+        # INVOICE DATE INVOICE NO.
+        # 5-31-26 1005638
+        m = re.search(
+            r"INVOICE\s+DATE[\s\S]{0,80}?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s+\d{5,}",
+            text,
+            re.I,
+        )
+        if m:
+            return m.group(1)
+
+        # Format:
+        # Invoice 154281 4/25/25, 3:16 PM
+        m = re.search(
+            r"\bInvoice\s+\d+\s+(\d{1,2}/\d{1,2}/\d{2,4})",
+            text,
+            re.I,
+        )
+        if m:
+            return m.group(1)
+
+        # Generic fallback:
+        # INVOICE DATE 5-31-26
+        m = re.search(
+            r"INVOICE\s+DATE[\s\S]{0,80}?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
+            text,
+            re.I,
+        )
+        if m:
+            return m.group(1)
+
+        return ""
 
     def _find_total(self, text):
         for pattern in [r"\bTotal\s+([0-9,]+\.\d{2})",
                         r"\bTotal\s+([0-9,]+)",
                         r"Amount\s*due\s*[$8]?\s*([-\d,]+\.\d{2})",
+                        r"Total\s+Amount\s+USD[\s\S]{0,80}?\$?\s*([0-9,]+\.\d{2})",
+                        r"PLEASE\s+PAY\s*>?\s*THIS\s+TOTAL\s*>?\s*([0-9,]+\.\d{2})", 
+                        r"PLEASE\s+PAY[\s\S]{0,120}?([0-9][0-9,\s]*[.]\s*\d\s*\d)",
+                        r"Invoice\s+Total\s*:?\s*\$?\s*([0-9,]+\.\d{2})"
                         ]:
             matches = re.findall(pattern, text, re.IGNORECASE)
             if matches:
