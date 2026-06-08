@@ -6,7 +6,6 @@ from app.email_downloader import download_invoice_pdfs_for_accounts
 from app.pdf_text import extract_pdf_text
 from app.file_mover import move_processed_pdf, move_failed_pdf
 from app.logger import ProcessingLogger
-from app.duplicate_checker import InvoiceHistory
 
 from app.parsers.generic_parser import GenericParser
 from app.parsers.valvoline_parser import ValvolineParser
@@ -72,13 +71,6 @@ def run_client(config_path: Path):
         resolve_path(client_root, config["logging"]["log_folder"]),
         config["logging"],
     )
-    history = InvoiceHistory(resolve_path(client_root, config["history"]["database_file"]))
-
-    # Config switch:
-    # duplicate_check: true   -> skip invoices already in history
-    # duplicate_check: false  -> allow reprocessing same invoices during testing
-    duplicate_check = config.get("duplicate_check", True)
-
     if config.get("email", {}).get("enabled", False):
         download_invoice_pdfs_for_accounts(
             email_config=config["email"],
@@ -88,7 +80,6 @@ def run_client(config_path: Path):
     grand_total_found = 0
     grand_success = 0
     grand_failed = 0
-    grand_duplicate = 0
 
     # One Excel file per run: collect all invoices first, then write once.
     all_invoices = []
@@ -104,14 +95,11 @@ def run_client(config_path: Path):
             processing_config=config["processing"],
             client_root=client_root,
             logger=logger,
-            history=history,
-            duplicate_check=duplicate_check,
         )
 
         vendor_summaries[vendor_folder] = summary
         grand_total_found += summary["total_files_found"]
         grand_failed += summary["failed_count"]
-        grand_duplicate += summary["duplicate_count"]
         successful_parse_records.extend(successful_records)
         failed_parse_records.extend(failed_records)
 
@@ -153,7 +141,6 @@ def run_client(config_path: Path):
                 processing_config=config["processing"],
                 client_root=client_root,
                 logger=logger,
-                history=history,
             )
 
             for vendor_folder, moved_count in moved_by_vendor.items():
@@ -182,11 +169,9 @@ def run_client(config_path: Path):
             "total_files_found": summary["total_files_found"],
             "success_count": summary["success_count"],
             "failed_count": summary["failed_count"],
-            "duplicate_count": summary["duplicate_count"],
             "total_invoice_files_processed": (
                 summary["success_count"]
                 + summary["failed_count"]
-                + summary["duplicate_count"]
             ),
         })
 
@@ -196,8 +181,7 @@ def run_client(config_path: Path):
     print(f"Total files found: {grand_total_found}")
     print(f"Success: {grand_success}")
     print(f"Failed: {grand_failed}")
-    print(f"Duplicate skipped: {grand_duplicate}")
-    print(f"Total invoice files processed: {grand_success + grand_failed + grand_duplicate}")
+    print(f"Total invoice files processed: {grand_success + grand_failed}")
     print("===================================")
 
 
@@ -226,8 +210,6 @@ def parse_vendor_folder(
     processing_config,
     client_root,
     logger,
-    history,
-    duplicate_check=True,
 ):
     default_parser_name = vendor_config.get("parser", "generic")
 
@@ -238,7 +220,6 @@ def parse_vendor_folder(
         "total_files_found": len(pdf_files),
         "success_count": 0,
         "failed_count": 0,
-        "duplicate_count": 0,
     }
 
     invoices = []
@@ -268,34 +249,7 @@ def parse_vendor_folder(
 
             validate_invoice(invoice)
 
-            invoice_key = history.make_invoice_key(
-                vendor_folder=vendor_folder,
-                invoice_number=invoice.get("invoice_number", ""),
-                amount=invoice.get("amount", ""),
-                invoice_date=invoice.get("invoice_date", ""),
-                pdf_file=pdf_file.name,
-            )
-
-            invoice["invoice_key"] = invoice_key
-
             successful_records.append(invoice.copy())
-
-            if duplicate_check and history.exists(invoice_key):
-                summary["duplicate_count"] += 1
-                invoice["status"] = "duplicate_skipped"
-                invoice["error"] = "Duplicate invoice detected"
-
-                successful_records[-1]["status"] = "duplicate_skipped"
-                successful_records[-1]["error"] = "Duplicate invoice detected"
-
-                logger.write_error({
-                    "vendor_folder": vendor_folder,
-                    "pdf_file": pdf_file.name,
-                    "processed_file_path": "",
-                    "status": "duplicate_skipped",
-                    "error": "Duplicate invoice detected",
-                })
-                continue
 
             # Do not move to processed here.
             # The PDF stays in input until Excel write succeeds.
@@ -340,7 +294,6 @@ def move_successful_invoices_after_excel(
     processing_config,
     client_root,
     logger,
-    history,
 ):
     moved_by_vendor = {}
 
@@ -369,7 +322,6 @@ def move_successful_invoices_after_excel(
         invoice["error"] = ""
 
         logger.write_success(invoice)
-        history.add(invoice["invoice_key"], invoice)
 
         moved_by_vendor[invoice_vendor_folder] = moved_by_vendor.get(invoice_vendor_folder, 0) + 1
 
