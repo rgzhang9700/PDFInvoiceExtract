@@ -47,7 +47,9 @@ class ValvolineParser(BaseInvoiceParser):
         for pattern in [r"Invoice\s+(\d+)", 
                         r"lnvoice\s+(\d+)", 
                         r"Invoice\s*#?\s*(\d+)", 
-                        r"Invoice #\s*:\s+(\d+)",]:
+                        r"Invoice #\s*:\s+(\d+)",
+                        r"\bINVOICE\s+NUMBER\b[\s\S]{0,120}?(\d{6,})", 
+                        r"INVOICE\s+NO\.?\s*\n\s*\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+(\d+)",]:
             m = re.search(pattern, text, re.IGNORECASE)
             if m:
                 return m.group(1)
@@ -74,7 +76,6 @@ class ValvolineParser(BaseInvoiceParser):
         for pattern in [r"\bTotal\s+([0-9,]+\.\d{2})",
                         r"\bTotal\s+([0-9,]+)",
                         r"Amount\s*due\s*[$8]?\s*([-\d,]+\.\d{2})",
-                        r"Total\s+Amount\s+USD\s*\$?\s*([-\d,]+\.\d{2})"
                         ]:
             matches = re.findall(pattern, text, re.IGNORECASE)
             if matches:

@@ -22,7 +22,7 @@ class FleetPrideParser(BaseInvoiceParser):
 
         return {
             "vendor_name": vendor_name,
-            "Company_code": "V00096",
+            "Company_code":  lookup_company_code(vendor_name),
             "vendor_address": "",
             "vendor_postcode": "",
             "ship_to_address": "",
@@ -34,12 +34,20 @@ class FleetPrideParser(BaseInvoiceParser):
             "TAXCenterID": lookup_tax_center_id(ship_to_postcode),
         }
 
-    # ------------------------------------------------------------
-    # OCR box method: use right side under SHIP TO
-    # ------------------------------------------------------------
+    def _find_vendor_name(self, text):
+        patterns = [
+            r"(VALVOLINE(?:\s+INSTANT\s+OIL\s+CHANGE)?)",
+            r"(jiffy\s*lube|jiffylube|jefflube)",
+            r"(THE\s+CHARLES\s+MACHINE\s+WORKS)",
+        ]
 
+        for pattern in patterns:
+            m = re.search(pattern, text, re.IGNORECASE)
+            if m:
+                return m.group(1).replace("jiffylube", "JIFFY LUBE")
+        return ""
+        
     def _ship_to_zip_from_2col_text(self, text):
-        text = text or ""
         lines = text.splitlines()
 
         right_text = []
@@ -68,37 +76,6 @@ class FleetPrideParser(BaseInvoiceParser):
 
         return ""
 
-    def _ship_to_zip_from_2col_text(self, text):
-        text = text or ""
-
-        # find SHIP TO only
-        m = re.search(r"SHIP\s*TO", text, re.I)
-        if not m:
-            return ""
-
-        # take small area after SHIP TO
-        block = text[m.end():m.end() + 300]
-
-        # stop before next section
-        block = re.split(
-            r"CHECK\s+NO|SHIPPER\s+NAME|PURCHASE\s+ORDER|REQUISITION|QUANTITY|PART\s+NUMBER|DESCRIPTION",
-            block,
-            maxsplit=1,
-            flags=re.I,
-        )[0]
-
-        # find ZIP after state, example: CA 94536-6532
-        matches = list(re.finditer(
-            r"\b[A-Z]{2}\s+(\d{5})(?:-\d{4})?\b",
-            block,
-            re.I,
-        ))
-
-        if matches:
-            return matches[-1].group(1)
-
-        return ""
-
     # ------------------------------------------------------------
     # Other fields
     # ------------------------------------------------------------
@@ -114,9 +91,6 @@ class FleetPrideParser(BaseInvoiceParser):
         return ""
       
     def _extract_invoice_number(self, text):
-        text = text or ""
-        text = text.replace("\r", "\n")
-        text = re.sub(r"[^\S\n]+", " ", text)
         for pattern in [r"\bINVOICE\s+NUMBER\b[\s\S]{0,120}?(\d{6,})", 
                         r"INVOICE\s+NO\.?\s*\n\s*\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+(\d+)",
                         r"\bINVOICE\b\s*(\d{6,})"
@@ -128,18 +102,11 @@ class FleetPrideParser(BaseInvoiceParser):
         
 
     def _extract_balance_due(self, text):
-        text = text or ""
-        text = text.replace("\r", "\n")
-        text = re.sub(r"[^\S\n]+", " ", text)
-        text = re.sub(r"[sS](?=\d)", "$", text)
-        text = re.sub(r"(\d)\s*[.]\s*(\d{2})\b", r"\1.\2", text)
-
-        m = re.search(
-            r"BALANCE\s+DUE[\s\S]{0,150}?[$]?\s*([0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)\s*[.]\s*([0-9]{2})",
-            text,
-            re.I,
-        )
-        if m:
-            return f"{m.group(1).replace(',', '')}.{m.group(2)}"
-
+        for pattern in [r"PLEASE\s+PAY\s*>?\s*THIS\s+TOTAL\s*>?\s*([0-9,]+\.\d{2})", 
+                         r"PLEASE\s+PAY[\s\S]{0,120}?([0-9][0-9,\s]*[.]\s*\d\s*\d)",
+                       ]:
+            m = re.search(pattern, text, re.IGNORECASE)
+            if m:
+                return m.group(1)
         return ""
+       
