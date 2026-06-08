@@ -7,7 +7,6 @@ from app.pdf_text import extract_pdf_text
 from app.file_mover import move_processed_pdf, move_failed_pdf
 from app.logger import ProcessingLogger
 
-
 from app.parsers.valvoline_parser import ValvolineParser
 from app.parsers.fleetpride_parser import FleetPrideParser
 
@@ -316,7 +315,13 @@ def parse_vendor_folder(
     parser_rules=None,
 ):
     input_folder = resolve_path(client_root, vendor_config["input_folder"])
-    pdf_files = sorted(input_folder.glob("*.pdf"))
+
+    # Only look in the current download folder.
+    # Do NOT scan PROCESSED or any other subdirectory.
+    pdf_files = sorted(
+        f for f in input_folder.iterdir()
+        if f.is_file() and f.suffix.lower() == ".pdf"
+    )
 
     summary = {
         "total_files_found": len(pdf_files),
