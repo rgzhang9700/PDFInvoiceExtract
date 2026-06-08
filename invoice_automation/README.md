@@ -14,7 +14,6 @@ This version supports:
 - Summary Excel workbook for successful and failed PDF parses
 - Total invoice files processed
 - Processed/error folder movement
-- Duplicate invoice detection using SQLite
 - EXE-ready with PyInstaller
 
 ## Run sample client

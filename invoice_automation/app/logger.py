@@ -13,7 +13,7 @@ ERROR_FIELDS = ["vendor_folder", "pdf_file", "processed_file_path", "status", "e
 
 SUMMARY_FIELDS = [
     "run_time", "vendor_folder", "total_files_found", "success_count",
-    "failed_count", "duplicate_count", "total_invoice_files_processed",
+    "failed_count", "total_invoice_files_processed",
 ]
 
 
