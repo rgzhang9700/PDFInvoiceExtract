@@ -1,0 +1,7 @@
+vendor_folder,pdf_file,processed_file_path,status,error
+FLEETPRIDE,FLEETPRIDE INV # 134869923.pdf,,excel_failed_not_moved,set_if_exists() missing 1 required positional argument: 'value'
+LESHWEB,66800415007.pdf,,excel_failed_not_moved,set_if_exists() missing 1 required positional argument: 'value'
+OILVENDOR,F005632-154281-001 - ENTERED.pdf,,excel_failed_not_moved,set_if_exists() missing 1 required positional argument: 'value'
+OILVENDOR,MY FLEET CENTER INV # 99923980.pdf,,excel_failed_not_moved,set_if_exists() missing 1 required positional argument: 'value'
+OILVENDOR,VALVOLINE INV # 167142.pdf,,excel_failed_not_moved,set_if_exists() missing 1 required positional argument: 'value'
+OILVENDOR,VALVOLINE INV # 169564.pdf,,excel_failed_not_moved,set_if_exists() missing 1 required positional argument: 'value'

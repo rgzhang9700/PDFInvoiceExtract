@@ -1,0 +1,83 @@
+client:
+  name: "Sample Accounting Firm"
+  client_id: "northsky_comm"
+
+email:
+  enabled: false
+
+  accounts:
+    - name: "main_ap_inbox"
+      enabled: true
+      imap_server: "imap.gmail.com"
+      email_user: "ap@example.com"
+      email_password: "gmail_app_password"
+      mailbox: "INBOX"
+      search_query: '(UNSEEN)'
+      mark_seen: true
+      unknown_folder: "./downloads/UNKNOWN"
+
+      rules:
+        - vendor: "FLEETPRIDE"
+          match: "any"
+          from_contains: "fleetpride"
+          subject_contains: "fleetpride"
+          filename_contains: "fleetpride"
+          download_folder: "./downloads/FLEETPRIDE"
+
+        - vendor: "LESHWEB"
+          match: "any"
+          from_contains: "leshweb"
+          subject_contains: "leshweb"
+          filename_contains: "leshweb"
+          download_folder: "./downloads/LESHWEB"
+
+        - vendor: "OILVANDOR"
+          match: "any"
+          from_contains: "valvoline"
+          subject_contains: "valvoline"
+          filename_contains: "valvoline"
+          download_folder: "./downloads/OILVANDOR"
+
+processing:
+  move_processed: false
+  processed_folder: "./processed"
+  move_failed: false
+  failed_folder: "./error"
+  append_timestamp_if_exists: true
+  duplicate_check: false
+
+logging:
+  log_folder: "./logs"
+  success_log: "success_log.csv"
+  error_log: "error_log.csv"
+  run_summary_log: "run_summary.csv"
+
+history:
+  database_file: "./logs/invoice_history.sqlite"
+
+excel:
+  sheet_name: "Data"
+  max_records_per_file: 50
+  document_currency: "USD"
+  accounting_document_type: "NS"
+  supplier_invoice_transaction_type: "1"
+
+vendors:
+  input_folder: "./downloads"
+  template_file: "./templates/Invoice_Template_no_PO.XLSX"
+  output_folder: "./output"
+  cost_center: "460020450"
+  tax_code: "I0"
+  FLEETPRIDE:
+    parser: "ValvolineParser"
+    gl_account: "51000100"
+
+  LESHWEB:
+    parser: "ValvolineParser"
+    gl_account: "51000230"
+    item_text: "LESHWEB Invoice"
+
+  OILVENDOR:
+    parser: "ValvolineParser"
+    gl_account: "51000230"
+    

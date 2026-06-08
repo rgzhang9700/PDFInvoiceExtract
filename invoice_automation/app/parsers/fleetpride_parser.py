@@ -1,223 +1,145 @@
 import re
-from datetime import datetime
-
-from .base import BaseInvoiceParser
-from .address_helpers import find_us_zip
-from .base import lookup_tax_center_id
+from .base import BaseInvoiceParser, lookup_tax_center_id, lookup_company_code
 
 
 class FleetPrideParser(BaseInvoiceParser):
-    def parse(self, text):
-        ship_to_address = self._find_ship_to_address(text)
-        vendor_address = self._find_vendor_address(text)
+    """
+    Simple FleetPride parser.
+
+    This version removes separate _clean_text() and _norm() helper functions.
+
+    SHIP TO ZIP rule:
+        Find SHIP TO row
+        Split next few rows into 2 columns
+        Use right column only
+        Return last ZIP after state
+    """
+
+    def parse(self, text, ocr_results=None, image_width=None, image_height=None, source_path=None):
+        text = text or ""
+        vendor_name = "FLEETPRIDE"
+        ship_to_postcode = self._ship_to_zip_from_2col_text(text)
 
         return {
-            "vendor_name": "FleetPride",
-            "vendor_address": vendor_address,
-            "vendor_postcode": find_us_zip(vendor_address),
-
-            "ship_to_address": ship_to_address,
-            "ship_to_postcode": self._find_ship_to_postcode(ship_to_address),
-            "service_center_address": vendor_address,
-            "service_center_postcode": find_us_zip(vendor_address),
-
-            "invoice_number": self._find_invoice_number(text),
-            "invoice_date": self._find_invoice_date(text),
-            "amount": self._find_total(text),
-            "po_number": self._find_po_number(text),
-            "TaxCenterID": "lookup_tax_center_id(ship_to_postcode)",
+            "vendor_name": vendor_name,
+            "Company_code": "V00096",
+            "vendor_address": "",
+            "vendor_postcode": "",
+            "ship_to_address": "",
+            "ship_to_postcode": ship_to_postcode,
+            "invoice_number": self._extract_invoice_number(text),
+            "invoice_date": self._extract_invoice_date(text),
+            "amount": self._extract_balance_due(text),
+            "CompanyCode": lookup_company_code(vendor_name),
+            "TAXCenterID": lookup_tax_center_id(ship_to_postcode),
         }
 
-    def _find_postcode(self, address):
-        if not address:
-            return ""
+    # ------------------------------------------------------------
+    # OCR box method: use right side under SHIP TO
+    # ------------------------------------------------------------
 
-        # Prefer ZIP after state code, example: OR 97140-9563
-        m = re.search(r"\b[A-Z]{2}\s+(\d{5})(?:\s*-\s*(\d{4}))?\b", address)
-        if m:
-            if m.group(2):
-                return f"{m.group(1)}-{m.group(2)}"
-            return m.group(1)
+    def _ship_to_zip_from_2col_text(self, text):
+        text = text or ""
+        lines = text.splitlines()
 
-        # Backup: choose the LAST ZIP-like number, not street number
-        matches = re.findall(r"\b\d{5}(?:\s*-\s*\d{4})?\b", address)
+        right_text = []
+
+        for line in lines:
+            # Only lines around SOLD TO / SHIP TO block
+            if "SOLD TO" in line.upper() and "SHIP TO" in line.upper():
+                parts = re.split(r"\s{4,}", line)
+                if len(parts) >= 2:
+                    right_text.append(parts[-1])
+                continue
+
+            # Split each visual row into left/right column
+            parts = re.split(r"\s{4,}", line)
+
+            if len(parts) >= 2:
+                right_text.append(parts[-1])
+
+        block = " ".join(right_text)
+
+        # Find ZIP after state in right column only
+        matches = list(re.finditer(r"\b[A-Z]{2}\s+(\d{5})(?:-\d{4})?\b", block, re.I))
+
         if matches:
-            return matches[-1].replace(" ", "")
+            return matches[-1].group(1)
 
         return ""
 
+    def _ship_to_zip_from_2col_text(self, text):
+        text = text or ""
 
-    def _find_invoice_number(self, text):
-        patterns = [
-            r"INVOICE NUMBER\s+(\d+)",
-            r"INVOICE\s+(\d+)",
-            r"\b(134\d+)\b",
-        ]
-
-        for pattern in patterns:
-            m = re.search(pattern, text, re.IGNORECASE)
-            if m:
-                return m.group(1)
-
-        return ""
-
-    def _find_invoice_date(self, text):
-        patterns = [
-            r"INVOICE DATE\s+(\d{1,2}/\d{1,2}/\d{2,4})",
-            r"\b(\d{1,2}/\d{1,2}/\d{2,4})\b",
-        ]
-
-        for pattern in patterns:
-            m = re.search(pattern, text, re.IGNORECASE)
-            if m:
-                value = m.group(1)
-
-                for fmt in ("%m/%d/%y", "%m/%d/%Y"):
-                    try:
-                        return datetime.strptime(value, fmt).strftime("%m/%d/%y")
-                    except ValueError:
-                        pass
-
-        return ""
-
-    def _find_total(self, text):
-        """
-        Find FleetPride invoice total.
-
-        OCR sometimes splits $1,070.00 or causes a bad regex match
-        that returns only 70.00. This function first looks near
-        BALANCE DUE and chooses the largest money amount found there.
-        """
-
-        money_pattern = r"\$?\s*([0-9]{1,3}\s*,\s*[0-9]{3}\.\d{2}|[0-9]{4,}\.\d{2}|[0-9]{1,3}\.\d{2})"
-
-        # Best source: amount near BALANCE DUE.
-        balance_match = re.search(
-            r"(BALANCE|BANLANCE)\s*DUE([\s\S]{0,200})",
-            text,
-            re.IGNORECASE,
-        )
-
-        if balance_match:
-            nearby_text = balance_match.group(2)
-            amounts = []
-
-            for m in re.finditer(money_pattern, nearby_text, re.IGNORECASE):
-                amount_text = m.group(1).replace(" ", "").replace(",", "")
-                try:
-                    amounts.append(float(amount_text))
-                except ValueError:
-                    pass
-
-            if amounts:
-                return max(amounts)
-
-        # Backup: find Parts & Service total.
-        parts_match = re.search(
-            r"Parts\s*&\s*Service[\s\S]{0,80}?" + money_pattern,
-            text,
-            re.IGNORECASE,
-        )
-
-        if parts_match:
-            return float(parts_match.group(1).replace(" ", "").replace(",", ""))
-
-        # Final FleetPride-specific backup for OCR spacing.
-        if re.search(r"1\s*,\s*070\.00", text):
-            return 1070.00
-
-        return ""
-
-    def _find_po_number(self, text):
-        patterns = [
-            r"PURCHASE ORDER NO\.\s+([A-Za-z0-9/\-]+)",
-            r"\b(71000/TOMM)\b",
-        ]
-
-        for pattern in patterns:
-            m = re.search(pattern, text, re.IGNORECASE)
-
-            if m:
-                return m.group(1)
-
-        return ""
-
-    def _find_vendor_address(self, text):
-        lines = [x.strip() for x in text.splitlines() if x.strip()]
-
-        for i, line in enumerate(lines):
-            if "REMIT TO" in line.upper():
-                return ", ".join(lines[i:i + 6])
-
-        return ""
-
-    def _find_ship_to_address(self, text):
-        """
-        Find FleetPride SHIP TO address.
-
-        For this vendor, OCR may not keep the table layout. This function:
-        1) looks for text after SHIP TO / SHIP T0;
-        2) falls back to known FleetPride address pattern;
-        3) falls back to the ZIP line with SHERWOOD OR.
-        """
-
-        normalized = re.sub(r"[ \t]+", " ", text)
-
-        patterns = [
-            # Normal OCR: SHIP TO NORTH SKY COMMUNICATIONS ...
-            r"SHIP\s*T[O0]\s+(NORTH\s+SKY\s+COMMUNICATIONS[\s\S]{0,180}?SHERWOOD\s+OR\s+\d{5}(?:\s*-\s*\d{4})?)",
-
-            # Sometimes OCR loses the SHIP TO marker. Use known customer + ship city.
-            r"(NORTH\s+SKY\s+COMMUNICATIONS[\s\S]{0,180}?10860\s+SW\s+CLUTTER\s+ST[\s\S]{0,80}?SHERWOOD\s+OR\s+\d{5}(?:\s*-\s*\d{4})?)",
-
-            # Last backup: address line through ZIP.
-            r"(10860\s+SW\s+CLUTTER\s+ST[\s\S]{0,80}?SHERWOOD\s+OR\s+\d{5}(?:\s*-\s*\d{4})?)",
-        ]
-
-        for pattern in patterns:
-            m = re.search(pattern, normalized, re.IGNORECASE)
-            if m:
-                address = " ".join(m.group(1).split())
-                address = re.sub(r"\s+-\s+", "-", address)
-                return address
-
-        lines = [x.strip() for x in text.splitlines() if x.strip()]
-
-        for i, line in enumerate(lines):
-            clean = re.sub(r"[^A-Z0-9]", "", line.upper())
-
-            if "SHIPTO" in clean or "SHIPT0" in clean or "SHPTO" in clean:
-                block = lines[i + 1:i + 10]
-                address_lines = []
-
-                for item in block:
-                    item_upper = item.upper()
-
-                    if any(stop in item_upper for stop in [
-                        "CHECK NO", "SHIPPER NAME", "PURCHASE ORDER",
-                        "REQUISITION", "ORDERED BY", "ACCOUNT",
-                        "SALESMAN", "QUANTITY", "PART NUMBER"
-                    ]):
-                        break
-
-                    address_lines.append(item)
-
-                    if re.search(r"\b[A-Z]{2}\s+\d{5}(?:\s*-\s*\d{4})?\b", item):
-                        break
-
-                if address_lines:
-                    return ", ".join(address_lines)
-
-        return ""
-
-    def _find_ship_to_postcode(self, ship_to_address):
-        if not ship_to_address:
+        # find SHIP TO only
+        m = re.search(r"SHIP\s*TO", text, re.I)
+        if not m:
             return ""
 
-        # Match: WA 98683
-        m = re.search(r"\b[A-Z]{2}\s+(\d{5})(?:-\d{4})?\b", ship_to_address)
+        # take small area after SHIP TO
+        block = text[m.end():m.end() + 300]
 
+        # stop before next section
+        block = re.split(
+            r"CHECK\s+NO|SHIPPER\s+NAME|PURCHASE\s+ORDER|REQUISITION|QUANTITY|PART\s+NUMBER|DESCRIPTION",
+            block,
+            maxsplit=1,
+            flags=re.I,
+        )[0]
+
+        # find ZIP after state, example: CA 94536-6532
+        matches = list(re.finditer(
+            r"\b[A-Z]{2}\s+(\d{5})(?:-\d{4})?\b",
+            block,
+            re.I,
+        ))
+
+        if matches:
+            return matches[-1].group(1)
+
+        return ""
+
+    # ------------------------------------------------------------
+    # Other fields
+    # ------------------------------------------------------------
+ 
+    def _extract_invoice_date(self, text):
+        text = text or ""
+        for pattern in [r"INVOICE\s+DATE[\s\S]{0,120}?(\d{1,2}/\d{1,2})\s+(\d{2})\s+\d{6,}", 
+                        r"INVOICE\s+DATE[\s\S]{0,40}?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
+                       ]:
+            m = re.search(pattern, text, re.IGNORECASE)
+            if m:
+                return m.group(1)
+        return ""
+      
+    def _extract_invoice_number(self, text):
+        text = text or ""
+        text = text.replace("\r", "\n")
+        text = re.sub(r"[^\S\n]+", " ", text)
+        for pattern in [r"\bINVOICE\s+NUMBER\b[\s\S]{0,120}?(\d{6,})", 
+                        r"INVOICE\s+NO\.?\s*\n\s*\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+(\d+)",
+                        r"\bINVOICE\b\s*(\d{6,})"
+                       ]:
+            m = re.search(pattern, text, re.IGNORECASE)
+            if m:
+                return m.group(1)
+        return ""
+        
+
+    def _extract_balance_due(self, text):
+        text = text or ""
+        text = text.replace("\r", "\n")
+        text = re.sub(r"[^\S\n]+", " ", text)
+        text = re.sub(r"[sS](?=\d)", "$", text)
+        text = re.sub(r"(\d)\s*[.]\s*(\d{2})\b", r"\1.\2", text)
+
+        m = re.search(
+            r"BALANCE\s+DUE[\s\S]{0,150}?[$]?\s*([0-9]{1,3}(?:,[0-9]{3})*|[0-9]+)\s*[.]\s*([0-9]{2})",
+            text,
+            re.I,
+        )
         if m:
-            return m.group(1)
+            return f"{m.group(1).replace(',', '')}.{m.group(2)}"
 
         return ""
