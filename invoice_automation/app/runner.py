@@ -6,59 +6,130 @@ from app.email_downloader import download_invoice_pdfs_for_accounts
 from app.pdf_text import extract_pdf_text
 from app.file_mover import move_processed_pdf, move_failed_pdf
 from app.logger import ProcessingLogger
-from app.duplicate_checker import InvoiceHistory
 
-from app.parsers.generic_parser import GenericParser
 from app.parsers.valvoline_parser import ValvolineParser
 from app.parsers.fleetpride_parser import FleetPrideParser
-from app.parsers.jiffy_lube_parser import JiffyLubeParser
-from app.parsers.les_schwab_parser import LesSchwabParser
+
 from app.excel_writer import (
     write_invoices_to_vendor_template_batches,
     write_processing_summary_excel,
 )
 
 
-PARSERS = {
-    "generic": GenericParser,
-    "valvoline": ValvolineParser,
-    "fleetpride": FleetPrideParser,
-    "jiffylube": JiffyLubeParser,
-    "jiffy_lube": JiffyLubeParser,
-    "les_schwab": LesSchwabParser,
-    "lesschwab": LesSchwabParser,
-    "leshweb": LesSchwabParser,
+PARSER_CLASSES = {
+    "ValvolineParser": ValvolineParser,
+    "FleetPrideParser": FleetPrideParser,
+    "JiffyLubeParser": JiffyLubeParser,
+    "LesSchwabParser": LesSchwabParser,
+    "GenericParser": GenericParser,
 }
 
 
-def detect_parser(text, default_parser_name="generic"):
+def load_parser_rules(client_root):
     """
-    Auto-detect parser from OCR/PDF text.
+    Read parser rules from:
+        clients/northsky_comm/templates/SupplierLists.xlsx
+        sheet: Parsers
 
-    Important:
-    This only changes which parser reads the PDF.
-    Excel output still uses the vendor folder config, for example OILVENDOR.
+    Expected columns:
+        Vendor Name | Supplier | Parser
+
+    If no match is found later, default parser is ValvolineParser.
     """
+    supplier_file = client_root / "templates" / "SupplierLists.xlsx"
 
-    upper_text = (text or "").upper()
+    if not supplier_file.exists():
+        print(f"Supplier parser list not found, using default ValvolineParser: {supplier_file}")
+        return []
 
-    if "VALVOLINE" in upper_text or "VIOC" in upper_text:
-        return ValvolineParser()
+    import openpyxl
 
-    if "JIFFY LUBE" in upper_text or "JIFFYLUBE" in upper_text:
-        return JiffyLubeParser()
+    wb = openpyxl.load_workbook(supplier_file, data_only=True)
 
-    if "MYFLEETCENTER" in upper_text or "MY FLEET CENTER" in upper_text:
-        return JiffyLubeParser()
+    if "Parsers" not in wb.sheetnames:
+        print(f"Sheet 'Parsers' not found in {supplier_file}, using default ValvolineParser")
+        return []
 
-    if "FLEETPRIDE" in upper_text:
-        return FleetPrideParser()
+    ws = wb["Parsers"]
 
-    if "LES SCHWAB" in upper_text or "LESSCHWAB" in upper_text:
-        return LesSchwabParser()
+    headers = {}
+    for col in range(1, ws.max_column + 1):
+        value = ws.cell(row=1, column=col).value
+        if value:
+            headers[str(value).strip().upper()] = col
 
-    parser_class = PARSERS.get(default_parser_name, GenericParser)
-    return parser_class()
+    vendor_col = headers.get("VENDOR NAME")
+    parser_col = headers.get("PARSER")
+    supplier_col = headers.get("SUPPLIER")
+
+    if not vendor_col or not parser_col:
+        print("SupplierLists.xlsx Parsers sheet must have 'Vendor Name' and 'Parser' columns.")
+        return []
+
+    rules = []
+
+    for row in range(2, ws.max_row + 1):
+        vendor_name = ws.cell(row=row, column=vendor_col).value
+        parser_name = ws.cell(row=row, column=parser_col).value
+        supplier = ws.cell(row=row, column=supplier_col).value if supplier_col else ""
+
+        vendor_name = str(vendor_name or "").strip()
+        parser_name = str(parser_name or "").strip()
+        supplier = str(supplier or "").strip()
+
+        if vendor_name and parser_name:
+            rules.append({
+                "vendor_name": vendor_name.upper(),
+                "parser_name": parser_name,
+                "supplier": supplier,
+            })
+
+    print(f"Loaded {len(rules)} parser rules from {supplier_file}")
+    return rules
+
+
+def detect_parser(text, parser_rules=None):
+    """
+    Pick parser using vendor name.
+
+    Simple logic:
+        1. Use default ValvolineParser to find vendor name.
+        2. Match that vendor name against SupplierLists.xlsx / Parsers sheet.
+        3. Use the Parser from the matching row.
+        4. If nothing matches, default to ValvolineParser.
+    """
+    text = text or ""
+    parser_rules = parser_rules or []
+
+    default_parser = ValvolineParser()
+
+    vendor_name = ""
+    if hasattr(default_parser, "_find_vendor_name"):
+        vendor_name = default_parser._find_vendor_name(text)
+
+    # Extra fallback if _find_vendor_name() did not include FleetPride or other names.
+    if not vendor_name:
+        upper_text = text.upper()
+        for rule in parser_rules:
+            rule_vendor = rule.get("vendor_name", "")
+            if rule_vendor and rule_vendor.upper() in upper_text:
+                vendor_name = rule_vendor
+                break
+
+    vendor_name_upper = (vendor_name or "").upper()
+    print(f"Detected vendor name: {vendor_name}")
+
+    for rule in parser_rules:
+        rule_vendor = rule.get("vendor_name", "").upper()
+        parser_name = rule.get("parser_name", "")
+
+        if rule_vendor and vendor_name_upper and rule_vendor in vendor_name_upper:
+            parser_class = PARSER_CLASSES.get(parser_name, ValvolineParser)
+            print(f"Matched parser from SupplierLists: {rule_vendor} -> {parser_class.__name__}")
+            return parser_class()
+
+    print("No parser match found. Using default ValvolineParser.")
+    return ValvolineParser()
 
 
 def run_client(config_path: Path):
@@ -68,16 +139,12 @@ def run_client(config_path: Path):
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
+    parser_rules = load_parser_rules(client_root)
+
     logger = ProcessingLogger(
         resolve_path(client_root, config["logging"]["log_folder"]),
         config["logging"],
     )
-    history = InvoiceHistory(resolve_path(client_root, config["history"]["database_file"]))
-
-    # Config switch:
-    # duplicate_check: true   -> skip invoices already in history
-    # duplicate_check: false  -> allow reprocessing same invoices during testing
-    duplicate_check = config.get("duplicate_check", True)
 
     if config.get("email", {}).get("enabled", False):
         download_invoice_pdfs_for_accounts(
@@ -88,7 +155,6 @@ def run_client(config_path: Path):
     grand_total_found = 0
     grand_success = 0
     grand_failed = 0
-    grand_duplicate = 0
 
     # One Excel file per run: collect all invoices first, then write once.
     all_invoices = []
@@ -97,21 +163,48 @@ def run_client(config_path: Path):
     output_vendor_config = None
     vendor_summaries = {}
 
-    for vendor_folder, vendor_config in config["vendors"].items():
+    vendor_base_config = {
+        key: value
+        for key, value in config["vendors"].items()
+        if not isinstance(value, dict)
+    }
+
+    # If several vendor sections use the same input folder, do not process
+    # the same files again and again.
+    processed_input_folders = set()
+
+    for vendor_folder, vendor_specific_config in config["vendors"].items():
+        # Skip shared vendor settings like input_folder/template_file/output_folder.
+        if not isinstance(vendor_specific_config, dict):
+            continue
+
+        # Merge shared config + vendor-specific config.
+        # IMPORTANT:
+        # Do NOT add vendor_folder to input_folder.
+        # Your files are directly in ./downloads, not ./downloads/<vendor_folder>.
+        vendor_config = dict(vendor_base_config)
+        vendor_config.update(vendor_specific_config)
+
+        input_folder = resolve_path(client_root, vendor_config["input_folder"]).resolve()
+
+        if input_folder in processed_input_folders:
+            print(f"Skipping duplicate input folder for {vendor_folder}: {input_folder}")
+            continue
+
+        processed_input_folders.add(input_folder)
+
         invoices, successful_records, failed_records, summary = parse_vendor_folder(
             vendor_folder=vendor_folder,
             vendor_config=vendor_config,
             processing_config=config["processing"],
             client_root=client_root,
             logger=logger,
-            history=history,
-            duplicate_check=duplicate_check,
+            parser_rules=parser_rules,
         )
 
         vendor_summaries[vendor_folder] = summary
         grand_total_found += summary["total_files_found"]
         grand_failed += summary["failed_count"]
-        grand_duplicate += summary["duplicate_count"]
         successful_parse_records.extend(successful_records)
         failed_parse_records.extend(failed_records)
 
@@ -153,7 +246,6 @@ def run_client(config_path: Path):
                 processing_config=config["processing"],
                 client_root=client_root,
                 logger=logger,
-                history=history,
             )
 
             for vendor_folder, moved_count in moved_by_vendor.items():
@@ -182,11 +274,9 @@ def run_client(config_path: Path):
             "total_files_found": summary["total_files_found"],
             "success_count": summary["success_count"],
             "failed_count": summary["failed_count"],
-            "duplicate_count": summary["duplicate_count"],
             "total_invoice_files_processed": (
                 summary["success_count"]
                 + summary["failed_count"]
-                + summary["duplicate_count"]
             ),
         })
 
@@ -196,8 +286,7 @@ def run_client(config_path: Path):
     print(f"Total files found: {grand_total_found}")
     print(f"Success: {grand_success}")
     print(f"Failed: {grand_failed}")
-    print(f"Duplicate skipped: {grand_duplicate}")
-    print(f"Total invoice files processed: {grand_success + grand_failed + grand_duplicate}")
+    print(f"Total invoice files processed: {grand_success + grand_failed}")
     print("===================================")
 
 
@@ -226,11 +315,8 @@ def parse_vendor_folder(
     processing_config,
     client_root,
     logger,
-    history,
-    duplicate_check=True,
+    parser_rules=None,
 ):
-    default_parser_name = vendor_config.get("parser", "generic")
-
     input_folder = resolve_path(client_root, vendor_config["input_folder"])
     pdf_files = sorted(input_folder.glob("*.pdf"))
 
@@ -254,7 +340,7 @@ def parse_vendor_folder(
         try:
             text, pdf_type = extract_pdf_text(pdf_file)
 
-            parser = detect_parser(text, default_parser_name=default_parser_name)
+            parser = detect_parser(text, parser_rules=parser_rules)
             print(f"Using parser: {parser.__class__.__name__}")
 
             invoice = parser.parse(text)
@@ -268,38 +354,13 @@ def parse_vendor_folder(
 
             validate_invoice(invoice)
 
-            invoice_key = history.make_invoice_key(
-                vendor_folder=vendor_folder,
-                invoice_number=invoice.get("invoice_number", ""),
-                amount=invoice.get("amount", ""),
-                invoice_date=invoice.get("invoice_date", ""),
-                pdf_file=pdf_file.name,
-            )
-
-            invoice["invoice_key"] = invoice_key
-
             successful_records.append(invoice.copy())
-
-            if duplicate_check and history.exists(invoice_key):
-                summary["duplicate_count"] += 1
-                invoice["status"] = "duplicate_skipped"
-                invoice["error"] = "Duplicate invoice detected"
-
-                successful_records[-1]["status"] = "duplicate_skipped"
-                successful_records[-1]["error"] = "Duplicate invoice detected"
-
-                logger.write_error({
-                    "vendor_folder": vendor_folder,
-                    "pdf_file": pdf_file.name,
-                    "processed_file_path": "",
-                    "status": "duplicate_skipped",
-                    "error": "Duplicate invoice detected",
-                })
-                continue
 
             # Do not move to processed here.
             # The PDF stays in input until Excel write succeeds.
             invoices.append(invoice)
+
+            print_file_result(invoice)
 
         except Exception as e:
             summary["failed_count"] += 1
@@ -329,6 +390,17 @@ def parse_vendor_folder(
             failed_records.append(failed_record)
 
             logger.write_error(failed_record)
+
+            print_file_result({
+                "pdf_file": pdf_file.name,
+                "vendor_name": "",
+                "invoice_number": "",
+                "invoice_date": "",
+                "amount": "",
+                "status": "failed",
+                "error": str(e),
+            })
+
             print(f"FAILED {pdf_file.name}: {e}")
 
     return invoices, successful_records, failed_records, summary
@@ -340,7 +412,6 @@ def move_successful_invoices_after_excel(
     processing_config,
     client_root,
     logger,
-    history,
 ):
     moved_by_vendor = {}
 
@@ -369,11 +440,23 @@ def move_successful_invoices_after_excel(
         invoice["error"] = ""
 
         logger.write_success(invoice)
-        history.add(invoice["invoice_key"], invoice)
 
         moved_by_vendor[invoice_vendor_folder] = moved_by_vendor.get(invoice_vendor_folder, 0) + 1
 
     return moved_by_vendor
+
+
+
+def print_file_result(invoice):
+    print(
+        f"File: {invoice.get('pdf_file', '')} | "
+        f"Vendor: {invoice.get('vendor_name', '')} | "
+        f"Invoice No: {invoice.get('invoice_number', '')} | "
+        f"Invoice Date: {invoice.get('invoice_date', '')} | "
+        f"Total Amount: {invoice.get('amount', '')} | "
+        f"Status: {invoice.get('status', '')} | "
+        f"Error: {invoice.get('error', '')}"
+    )
 
 
 def validate_invoice(invoice):

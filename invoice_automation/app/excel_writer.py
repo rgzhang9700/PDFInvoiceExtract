@@ -7,8 +7,6 @@ import openpyxl
 
 def write_invoices_to_vendor_template_batches(invoices, vendor_config, excel_config, client_root):
     template_file = resolve_path(client_root, vendor_config["template_file"])
-    output_folder = resolve_path(client_root, vendor_config["output_folder"])
-    output_folder.mkdir(parents=True, exist_ok=True)
 
     if not template_file.exists():
         raise FileNotFoundError(f"Vendor Excel template not found: {template_file}")
@@ -19,44 +17,58 @@ def write_invoices_to_vendor_template_batches(invoices, vendor_config, excel_con
 
     max_records = int(excel_config.get("max_records_per_file", 50))
     file_prefix = vendor_config.get("file_prefix", "invoice_load")
-    total_batches = math.ceil(len(invoices) / max_records)
 
-    for batch_index in range(total_batches):
-        batch_records = invoices[batch_index * max_records:(batch_index + 1) * max_records]
-        output_file = output_folder / f"{file_prefix}_{batch_index + 1:03d}.xlsx"
+    # NEW:
+    # Write the output Excel into the same folder as the source PDF/image files.
+    # If invoices come from multiple folders, create one output Excel set per folder.
+    invoices_by_folder = {}
 
-        shutil.copy(template_file, output_file)
+    for invoice in invoices:
+        source_path = invoice.get("source_pdf_path") or invoice.get("source_image_path") or invoice.get("pdf_file", "")
+        source_folder = Path(source_path).parent if source_path else resolve_path(client_root, vendor_config["output_folder"])
+        invoices_by_folder.setdefault(source_folder, []).append(invoice)
 
-        wb = openpyxl.load_workbook(output_file)
-        sheet_name = excel_config.get("sheet_name", "Data")
+    for output_folder, folder_invoices in invoices_by_folder.items():
+        output_folder = Path(output_folder)
+        output_folder.mkdir(parents=True, exist_ok=True)
 
-        if sheet_name not in wb.sheetnames:
-            raise ValueError(f"Sheet '{sheet_name}' not found in vendor template: {template_file}")
+        total_batches = math.ceil(len(folder_invoices) / max_records)
 
-        ws = wb[sheet_name]
-        header_row = find_header_row(ws)
-        headers = build_header_map(ws, header_row)
-        start_row = find_next_empty_row(ws, header_row + 1)
+        for batch_index in range(total_batches):
+            batch_records = folder_invoices[batch_index * max_records:(batch_index + 1) * max_records]
+            output_file = output_folder / f"{file_prefix}_{batch_index + 1:03d}.xlsx"
 
-        for index, invoice in enumerate(batch_records):
-            row = start_row + index
+            shutil.copy(template_file, output_file)
 
-            # FIX:
-            # Invoice/row ID increases 1, 2, 3 within each Excel output file.
-            line_number = index + 1
+            wb = openpyxl.load_workbook(output_file)
+            sheet_name = excel_config.get("sheet_name", "Data")
 
-            write_invoice_row(
-                ws=ws,
-                row=row,
-                headers=headers,
-                invoice=invoice,
-                vendor_config=vendor_config,
-                excel_config=excel_config,
-                line_number=line_number,
-            )
+            if sheet_name not in wb.sheetnames:
+                raise ValueError(f"Sheet '{sheet_name}' not found in vendor template: {template_file}")
 
-        wb.save(output_file)
-        print(f"Excel created: {output_file} with {len(batch_records)} records")
+            ws = wb[sheet_name]
+            header_row = find_header_row(ws)
+            headers = build_header_map(ws, header_row)
+            start_row = find_next_empty_row(ws, header_row + 1)
+
+            for index, invoice in enumerate(batch_records):
+                row = start_row + index
+
+                # Invoice/row ID increases 1, 2, 3 within each Excel output file.
+                line_number = index + 1
+
+                write_invoice_row(
+                    ws=ws,
+                    row=row,
+                    headers=headers,
+                    invoice=invoice,
+                    vendor_config=vendor_config,
+                    excel_config=excel_config,
+                    line_number=line_number,
+                )
+
+            wb.save(output_file)
+            print(f"Excel created: {output_file} with {len(batch_records)} records")
 
 
 def write_processing_summary_excel(successful_records, failed_records, output_file):
