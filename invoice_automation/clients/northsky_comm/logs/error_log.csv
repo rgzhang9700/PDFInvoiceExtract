@@ -29,3 +29,13 @@ OILVENDOR,DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf,,failed,"Missing
 OILVENDOR,F005632-154281-001 - ENTERED.pdf,,failed,Missing required fields: ['invoice_date']
 OILVENDOR,FLEETPRIDE INV # 134882087.PDF,,failed,"Missing required fields: ['invoice_date', 'amount']"
 OILVENDOR,THE CHARLES MACHINE INV # 93968775.PDF,,failed,Missing required fields: ['amount']
+FLEETPRIDE,67000553452.pdf,,failed,"Missing required fields: ['invoice_number', 'invoice_date', 'amount']"
+FLEETPRIDE,DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf,,failed,"Missing required fields: ['invoice_date', 'amount']"
+FLEETPRIDE,F005632-154281-001 - ENTERED.pdf,,failed,Missing required fields: ['invoice_date']
+FLEETPRIDE,FLEETPRIDE INV # 134882087.PDF,,failed,"Missing required fields: ['invoice_date', 'amount']"
+FLEETPRIDE,THE CHARLES MACHINE INV # 93968775.PDF,,failed,Missing required fields: ['amount']
+FLEETPRIDE,67000553452.pdf,,failed,"Missing required fields: ['invoice_number', 'invoice_date', 'amount']"
+FLEETPRIDE,DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf,,failed,no such group
+FLEETPRIDE,F005632-154281-001 - ENTERED.pdf,,failed,Missing required fields: ['invoice_date']
+FLEETPRIDE,FLEETPRIDE INV # 134882087.PDF,,failed,no such group
+FLEETPRIDE,THE CHARLES MACHINE INV # 93968775.PDF,,failed,Missing required fields: ['amount']

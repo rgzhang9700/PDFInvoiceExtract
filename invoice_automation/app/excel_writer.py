@@ -26,7 +26,8 @@ def write_invoices_to_vendor_template_batches(invoices, vendor_config, excel_con
     for invoice in invoices:
         source_path = invoice.get("source_pdf_path") or invoice.get("source_image_path") or invoice.get("pdf_file", "")
         source_folder = Path(source_path).parent if source_path else resolve_path(client_root, vendor_config["output_folder"])
-        invoices_by_folder.setdefault(source_folder, []).append(invoice)
+        output_folder = source_folder / "PROCESSED"
+        invoices_by_folder.setdefault(output_folder, []).append(invoice)
 
     for output_folder, folder_invoices in invoices_by_folder.items():
         output_folder = Path(output_folder)

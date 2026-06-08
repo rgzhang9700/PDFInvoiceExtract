@@ -35,6 +35,8 @@ class ValvolineParser(BaseInvoiceParser):
             r"(VALVOLINE(?:\s+INSTANT\s+OIL\s+CHANGE)?)",
             r"(jiffy\s*lube|jiffylube|jefflube)",
             r"(THE\s+CHARLES\s+MACHINE\s+WORKS)",
+            r"FLEETPRIDE",
+            r"DITCH WITCH",
         ]
 
         for pattern in patterns:

@@ -7,6 +7,7 @@ from app.pdf_text import extract_pdf_text
 from app.file_mover import move_processed_pdf, move_failed_pdf
 from app.logger import ProcessingLogger
 
+
 from app.parsers.valvoline_parser import ValvolineParser
 from app.parsers.fleetpride_parser import FleetPrideParser
 
@@ -19,9 +20,6 @@ from app.excel_writer import (
 PARSER_CLASSES = {
     "ValvolineParser": ValvolineParser,
     "FleetPrideParser": FleetPrideParser,
-    "JiffyLubeParser": JiffyLubeParser,
-    "LesSchwabParser": LesSchwabParser,
-    "GenericParser": GenericParser,
 }
 
 
@@ -416,26 +414,25 @@ def move_successful_invoices_after_excel(
     moved_by_vendor = {}
 
     for invoice in invoices:
-        pdf_file = Path(invoice["source_pdf_path"])
+        source_file = Path(invoice["source_pdf_path"])
         invoice_vendor_folder = invoice.get("vendor_folder", vendor_folder)
 
-        moved_path = ""
+        # NEW:
+        # Move passed/processed source file into PROCESSED folder
+        # inside the same current download folder.
+        processed_folder = source_file.parent / "PROCESSED"
+        processed_folder.mkdir(parents=True, exist_ok=True)
 
-        if processing_config.get("move_processed", True):
-            moved_path = move_processed_pdf(
-                pdf_file=pdf_file,
-                vendor_folder=invoice_vendor_folder,
-                processed_root=resolve_path(
-                    client_root,
-                    processing_config.get("processed_folder", "./processed"),
-                ),
-                append_timestamp_if_exists=processing_config.get(
-                    "append_timestamp_if_exists",
-                    True,
-                ),
-            )
+        target_file = processed_folder / source_file.name
 
-        invoice["processed_file_path"] = moved_path
+        # If same filename exists, append timestamp.
+        if target_file.exists():
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            target_file = processed_folder / f"{source_file.stem}_{timestamp}{source_file.suffix}"
+
+        source_file.rename(target_file)
+
+        invoice["processed_file_path"] = str(target_file)
         invoice["status"] = "success"
         invoice["error"] = ""
 
@@ -444,7 +441,6 @@ def move_successful_invoices_after_excel(
         moved_by_vendor[invoice_vendor_folder] = moved_by_vendor.get(invoice_vendor_folder, 0) + 1
 
     return moved_by_vendor
-
 
 
 def print_file_result(invoice):
