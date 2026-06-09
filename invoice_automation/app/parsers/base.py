@@ -4,10 +4,6 @@ import re
 import pandas as pd
 
 
-_tax_lookup_cache = None
-_supplier_lookup_cache = None
-
-
 def _project_root():
     """
     base.py is expected at: app/parsers/base.py
@@ -24,61 +20,10 @@ def _default_supplier_lookup_file():
     return _project_root() / "clients" / "northsky_comm" / "templates" / "SupplierLists.xlsx"
 
 
-def get_tax_lookup(lookup_file=None):
-    """
-    Load postcode -> TaxCenterID lookup from TAXCenterLookup.xlsx.
-    This is a module-level function so parsers can import it from .base.
-    """
-    global _tax_lookup_cache
-
-    lookup_file = Path(lookup_file) if lookup_file else _default_tax_lookup_file()
-    cache_key = str(lookup_file.resolve()) if lookup_file.exists() else str(lookup_file)
-
-    if _tax_lookup_cache is None or _tax_lookup_cache.get("__file__") != cache_key:
-        lookup = {"__file__": cache_key}
-
-        if not lookup_file.exists():
-            _tax_lookup_cache = lookup
-            return lookup
-
-        try:
-            df = pd.read_excel(lookup_file, dtype=str)
-            df.columns = [str(c).strip() for c in df.columns]
-
-            # Accept common column spellings.
-            postcode_col = None
-            tax_col = None
-            for col in df.columns:
-                col_key = col.strip().upper().replace(" ", "").replace("_", "")
-                if col_key in ("POSTCODE", "ZIP", "ZIPCODE"):
-                    postcode_col = col
-                if col_key in ("TAXCENTERID", "TAXCENTER"):
-                    tax_col = col
-
-            if postcode_col and tax_col:
-                for _, row in df.iterrows():
-                    postcode = str(row.get(postcode_col, "") or "").strip()
-                    taxcenterid = str(row.get(tax_col, "") or "").strip()
-
-                    if postcode:
-                        postcode5 = re.sub(r"\D", "", postcode)[:5]
-                        if postcode5:
-                            lookup[postcode5] = taxcenterid
-
-        except Exception:
-            # Keep parser from crashing if lookup file has issue.
-            pass
-
-        _tax_lookup_cache = lookup
-
-    return _tax_lookup_cache
-
-
 def lookup_tax_center_id(postcode, lookup_file=None):
     """
-    Public function imported by parser files.
-    Example:
-        from .base import lookup_tax_center_id
+    Look up TaxCenterID from TAXCenterLookup.xlsx by postcode.
+    No module cache is used.
     """
     if not postcode:
         return ""
@@ -87,80 +32,82 @@ def lookup_tax_center_id(postcode, lookup_file=None):
     if not postcode5:
         return ""
 
-    lookup = get_tax_lookup(lookup_file=lookup_file)
-    return lookup.get(postcode5, "")
+    lookup_file = Path(lookup_file) if lookup_file else _default_tax_lookup_file()
+    if not lookup_file.exists():
+        return ""
 
+    try:
+        df = pd.read_excel(lookup_file, dtype=str)
+        df.columns = [str(c).strip() for c in df.columns]
 
-def get_supplier_lookup(lookup_file=None):
-    """
-    Load supplier name -> Company Code lookup from SupplierLists.xlsx.
-    Sheet expected: SAPUI5 Export
-    Common columns:
-        Name of Supplier
-        Company Code
-    """
-    global _supplier_lookup_cache
+        postcode_col = None
+        tax_col = None
 
-    lookup_file = Path(lookup_file) if lookup_file else _default_supplier_lookup_file()
-    cache_key = str(lookup_file.resolve()) if lookup_file.exists() else str(lookup_file)
+        for col in df.columns:
+            col_key = col.strip().upper().replace(" ", "").replace("_", "")
+            if col_key in ("POSTCODE", "ZIP", "ZIPCODE"):
+                postcode_col = col
+            if col_key in ("TAXCENTERID", "TAXCENTER"):
+                tax_col = col
 
-    if _supplier_lookup_cache is None or _supplier_lookup_cache.get("__file__") != cache_key:
-        lookup = {"__file__": cache_key}
+        if not postcode_col or not tax_col:
+            return ""
 
-        if not lookup_file.exists():
-            _supplier_lookup_cache = lookup
-            return lookup
+        for _, row in df.iterrows():
+            row_zip = re.sub(r"\D", "", str(row.get(postcode_col, "") or ""))[:5]
+            if row_zip == postcode5:
+                return str(row.get(tax_col, "") or "").strip()
 
-        try:
-            df = pd.read_excel(lookup_file, sheet_name="SAPUI5 Export", dtype=str)
-            df.columns = [str(c).strip() for c in df.columns]
+    except Exception:
+        return ""
 
-            supplier_col = None
-            company_col = None
-            for col in df.columns:
-                col_key = col.strip().upper().replace(" ", "").replace("_", "")
-                if col_key in ("NAMEOFSUPPLIER", "SUPPLIERNAME", "VENDORNAME", "NAME"):
-                    supplier_col = col
-                if col_key in ("COMPANYCODE", "COMPANY"):
-                    company_col = col
-
-            if supplier_col and company_col:
-                for _, row in df.iterrows():
-                    supplier_name = str(row.get(supplier_col, "") or "").strip().upper()
-                    company_code = str(row.get(company_col, "") or "").strip()
-                    if supplier_name:
-                        lookup[supplier_name] = company_code
-
-        except Exception:
-            # Keep parser from crashing if lookup file has issue.
-            pass
-
-        _supplier_lookup_cache = lookup
-
-    return _supplier_lookup_cache
+    return ""
 
 
 def lookup_company_code(supplier_name, lookup_file=None):
     """
-    Public function imported by parser files.
-    Looks up company code by supplier/vendor name.
+    Look up Company Code from SupplierLists.xlsx by supplier/vendor name.
+    No module cache is used.
     """
     if not supplier_name:
         return ""
 
-    supplier_name = str(supplier_name).strip().upper()
-    lookup = get_supplier_lookup(lookup_file=lookup_file)
+    search_name = str(supplier_name).strip().upper()
+    lookup_file = Path(lookup_file) if lookup_file else _default_supplier_lookup_file()
+    if not lookup_file.exists():
+        return ""
 
-    # Exact match
-    if supplier_name in lookup:
-        return lookup[supplier_name]
+    try:
+        df = pd.read_excel(lookup_file, sheet_name="SAPUI5 Export", dtype=str)
+        df.columns = [str(c).strip() for c in df.columns]
 
-    # Partial match
-    for sap_name, company_code in lookup.items():
-        if sap_name == "__file__":
-            continue
-        if supplier_name in sap_name or sap_name in supplier_name:
-            return company_code
+        supplier_col = None
+        company_col = None
+
+        for col in df.columns:
+            col_key = col.strip().upper().replace(" ", "").replace("_", "")
+            if col_key in ("NAMEOFSUPPLIER", "SUPPLIERNAME", "VENDORNAME", "NAME"):
+                supplier_col = col
+            if col_key in ("COMPANYCODE", "COMPANY"):
+                company_col = col
+
+        if not supplier_col or not company_col:
+            return ""
+
+        # Exact match first.
+        for _, row in df.iterrows():
+            sap_name = str(row.get(supplier_col, "") or "").strip().upper()
+            if sap_name == search_name:
+                return str(row.get(company_col, "") or "").strip()
+
+        # Partial match fallback.
+        for _, row in df.iterrows():
+            sap_name = str(row.get(supplier_col, "") or "").strip().upper()
+            if sap_name and (search_name in sap_name or sap_name in search_name):
+                return str(row.get(company_col, "") or "").strip()
+
+    except Exception:
+        return ""
 
     return ""
 
@@ -189,7 +136,7 @@ class BaseInvoiceParser(ABC):
 
         # Common OCR fixes around labels.
         text = re.sub(r"(?i)invoice\s+date\s*/\s*time", "Invoice Date/Time", text)
-        text = re.sub(r"(?i)invoice\s+date\s+invoice\s+no\.?", "INVOICE DATE INVOICE NO.", text)
+        text = re.sub(r"(?i)invoice\s+date\s+invoice\s+no\.?,?", "INVOICE DATE INVOICE NO.", text)
 
         # Fix OCR money false reads only when directly before a digit.
         # Example: s1,148.98 -> $1,148.98
