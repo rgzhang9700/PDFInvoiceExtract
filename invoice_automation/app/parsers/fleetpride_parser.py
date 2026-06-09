@@ -16,7 +16,9 @@ class FleetPrideParser(BaseInvoiceParser):
     """
 
     def parse(self, text, ocr_results=None, image_width=None, image_height=None, source_path=None):
-        text = text or ""
+        raw_text = text
+        clean_text = self._clean_ocr_text(raw_text)
+        text = self._clean_ocr_one_line(raw_text)
         vendor_name = self._find_vendor_name(text)
         ship_to_postcode = self._ship_to_zip_from_2col_text(text)
 

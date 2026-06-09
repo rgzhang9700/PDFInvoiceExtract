@@ -413,12 +413,21 @@ def move_successful_invoices_after_excel(
 
 
 def print_file_result(invoice):
+    postcode_lookup = (
+        invoice.get("postcode_lookup")
+        or invoice.get("tax_center_id")
+        or invoice.get("TaxCenterID")
+        or invoice.get("taxcenter_id")
+        or ""
+    )
+
     print(
         f"File: {invoice.get('pdf_file', '')} | "
         f"Vendor: {invoice.get('vendor_name', '')} | "
         f"Invoice No: {invoice.get('invoice_number', '')} | "
         f"Invoice Date: {invoice.get('invoice_date', '')} | "
-        f"Total Amount: {invoice.get('amount', '')}"
+        f"Total Amount: {invoice.get('amount', '')} | "
+        f"postcode_lookup: {postcode_lookup}"
     )
 
 

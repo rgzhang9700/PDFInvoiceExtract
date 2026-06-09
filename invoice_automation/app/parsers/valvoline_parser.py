@@ -6,6 +6,9 @@ from datetime import datetime
 
 class ValvolineParser(BaseInvoiceParser):
     def parse(self, text):
+        raw_text = text
+        clean_text = self._clean_ocr_text(raw_text)
+        text = self._clean_ocr_one_line(raw_text)
         service_address = self._find_service_center_address(text)
         ship_to_address = self._find_ship_to_address(text)
         vender_address = self._find_vendor_address(text)
@@ -27,6 +30,7 @@ class ValvolineParser(BaseInvoiceParser):
             "invoice_date": self._find_invoice_date(text),
             "amount": self._find_total(text),
             "po_number": self._find_po_number(text),
+            "postcode_lookup" : postcode_lookup,
             "TAXCenterID": lookup_tax_center_id(postcode_lookup),
         }   
         
