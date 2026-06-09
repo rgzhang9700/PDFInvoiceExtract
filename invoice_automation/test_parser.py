@@ -12,14 +12,14 @@ pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_com
 pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\FLEETPRIDE INV # 134882087.PDF"
 pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf"
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\F005632-154281-001 - ENTERED.pdf"
-pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\67000553452.pdf"
+#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\67000553452.pdf"
 def main():
     print(pdf_file)
     text, pdf_type = extract_pdf_text(pdf_file)
 
-    parser = ValvolineParser()
+    #parser = ValvolineParser()
     #parser = JiffyLubeParser()
-    #parser = FleetPrideParser()
+    parser = FleetPrideParser()
 
     print(text)
     invoice = parser.parse(text)

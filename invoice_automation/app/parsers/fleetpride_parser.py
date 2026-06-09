@@ -70,13 +70,14 @@ class FleetPrideParser(BaseInvoiceParser):
  
     def _extract_invoice_date(self, text):
         # Case 1: normal date, like 05/27/26
-        m = re.search(
-            r"INVOICE\s+DATE[\s\S]{0,150}?(\d{1,2}/\d{1,2}/\d{2,4})",
-            text,
-            re.I,
-        )
-        if m:
-            return m.group(1)
+        patterns = [r"INVOICE\s+DATE[\s\S]{0,150}?(\d{1,2}/\d{1,2}/\d{2,4})",
+                    r"INVOICE\s+DATE\s+INVOICE\s+NO\.?\s+(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s+\d{5,}",
+                   ]
+        
+        for pattern in patterns:
+            m = re.search(pattern, text, re.IGNORECASE)
+            if m:
+                return m.group(1)
 
         # Case 2: split date, like 05/27 then 26 then invoice number
         m = re.search(
@@ -93,6 +94,7 @@ class FleetPrideParser(BaseInvoiceParser):
         for pattern in [r"\bINVOICE\s+NUMBER\b[\s\S]{0,120}?(\d{6,})", 
                         r"INVOICE\s+NO\.?\s*\n\s*\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+(\d+)",
                         r"\bINVOICE\b\s*(\d{6,})",
+                        r"INVOICE\s+DATE\s+INVOICE\s+NO\.?\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
                        ]:
             m = re.search(pattern, text, re.IGNORECASE)
             if m:

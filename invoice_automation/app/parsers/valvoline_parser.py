@@ -63,40 +63,31 @@ class ValvolineParser(BaseInvoiceParser):
         
     def _find_invoice_date(self, text):
         text = text or ""
+        patterns = [
+                    r"Invoice\s+\d+\s+(\d{1,2}/\d{1,2}/\d{4})",
+                    r"Date\s*:\s*(\d{2}/\d{2}/\d{4})",
+                    r"\bInvoice\s+\d+\s+(\d{1,2}/\d{1,2}/\d{2,4})",
+                    r"INVOICE\s+DATE[\s\S]{0,80}?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
+                    r"INVOICE\s+DATE[\s\S]{0,80}?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s+\d{5,}",  
+                    r"Invoice\s*Date\s*/\s*Time\s*:\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
+                ]
+  
+        for pattern in patterns:
+            m = re.search(pattern, text, re.IGNORECASE)
+            if not m:
+                continue
 
-        # Ditch Witch format:
-        # INVOICE DATE INVOICE NO.
-        # 5-31-26 1005638
-        m = re.search(
-            r"INVOICE\s+DATE[\s\S]{0,80}?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s+\d{5,}",
-            text,
-            re.I,
-        )
-        if m:
-            return m.group(1)
+            value = m.group(1).strip()
+            value = value.replace("-", "/")
 
-        # Format:
-        # Invoice 154281 4/25/25, 3:16 PM
-        m = re.search(
-            r"\bInvoice\s+\d+\s+(\d{1,2}/\d{1,2}/\d{2,4})",
-            text,
-            re.I,
-        )
-        if m:
-            return m.group(1)
-
-        # Generic fallback:
-        # INVOICE DATE 5-31-26
-        m = re.search(
-            r"INVOICE\s+DATE[\s\S]{0,80}?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
-            text,
-            re.I,
-        )
-        if m:
-            return m.group(1)
+            for fmt in ("%m/%d/%Y", "%m/%d/%y"):
+                try:
+                    return datetime.strptime(value, fmt).strftime("%m/%d/%Y")
+                except ValueError:
+                    pass
 
         return ""
-
+        
     def _find_total(self, text):
         for pattern in [r"\bTotal\s+([0-9,]+\.\d{2})",
                         r"\bTotal\s+([0-9,]+)",
@@ -104,7 +95,7 @@ class ValvolineParser(BaseInvoiceParser):
                         r"Total\s+Amount\s+USD[\s\S]{0,80}?\$?\s*([0-9,]+\.\d{2})",
                         r"PLEASE\s+PAY\s*>?\s*THIS\s+TOTAL\s*>?\s*([0-9,]+\.\d{2})", 
                         r"PLEASE\s+PAY[\s\S]{0,120}?([0-9][0-9,\s]*[.]\s*\d\s*\d)",
-                        r"Invoice\s+Total\s*:?\s*\$?\s*([0-9,]+\.\d{2})"
+                        r"Invoice\s+Total\s*:\s*\$?\s*([0-9,]+\.\d{2})",
                         ]:
             matches = re.findall(pattern, text, re.IGNORECASE)
             if matches:

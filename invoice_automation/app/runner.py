@@ -4,16 +4,13 @@ import yaml
 
 from app.email_downloader import download_invoice_pdfs_for_accounts
 from app.pdf_text import extract_pdf_text
-from app.file_mover import move_processed_pdf, move_failed_pdf
+from app.file_mover import move_failed_pdf
 from app.logger import ProcessingLogger
 
 from app.parsers.valvoline_parser import ValvolineParser
 from app.parsers.fleetpride_parser import FleetPrideParser
 
-from app.excel_writer import (
-    write_invoices_to_vendor_template_batches,
-    write_processing_summary_excel,
-)
+from app.excel_writer import write_invoices_to_vendor_template_batches
 
 
 PARSER_CLASSES = {
@@ -138,6 +135,8 @@ def run_client(config_path: Path):
 
     parser_rules = load_parser_rules(client_root)
 
+    # Keep ProcessingLogger only for run_summary.
+    # Do not call write_error() or write_success(), so no separate error_log/summary_log is created.
     logger = ProcessingLogger(
         resolve_path(client_root, config["logging"]["log_folder"]),
         config["logging"],
@@ -155,8 +154,6 @@ def run_client(config_path: Path):
 
     # One Excel file per run: collect all invoices first, then write once.
     all_invoices = []
-    successful_parse_records = []
-    failed_parse_records = []
     output_vendor_config = None
     vendor_summaries = {}
 
@@ -202,8 +199,6 @@ def run_client(config_path: Path):
         vendor_summaries[vendor_folder] = summary
         grand_total_found += summary["total_files_found"]
         grand_failed += summary["failed_count"]
-        successful_parse_records.extend(successful_records)
-        failed_parse_records.extend(failed_records)
 
         if invoices:
             all_invoices.extend(invoices)
@@ -212,20 +207,6 @@ def run_client(config_path: Path):
             # as the output/template/GL config for this run.
             if output_vendor_config is None:
                 output_vendor_config = vendor_config
-
-    summary_excel_file = build_processing_summary_excel_path(
-        config=config,
-        client_root=client_root,
-    )
-
-    try:
-        write_processing_summary_excel(
-            successful_records=successful_parse_records,
-            failed_records=failed_parse_records,
-            output_file=summary_excel_file,
-        )
-    except Exception as e:
-        print(f"PROCESSING SUMMARY EXCEL WRITE FAILED: {e}")
 
     if all_invoices:
         try:
@@ -256,10 +237,12 @@ def run_client(config_path: Path):
             # Do not move PDFs to processed if Excel failed.
             # Leave them in input folder so they can be fixed/reprocessed.
             for invoice in all_invoices:
-                logger.write_error({
-                    "vendor_folder": invoice.get("vendor_folder", ""),
+                print_file_result({
                     "pdf_file": invoice.get("pdf_file", ""),
-                    "processed_file_path": "",
+                    "vendor_name": invoice.get("vendor_name", ""),
+                    "invoice_number": invoice.get("invoice_number", ""),
+                    "invoice_date": invoice.get("invoice_date", ""),
+                    "amount": invoice.get("amount", ""),
                     "status": "excel_failed_not_moved",
                     "error": str(e),
                 })
@@ -285,25 +268,6 @@ def run_client(config_path: Path):
     print(f"Failed: {grand_failed}")
     print(f"Total invoice files processed: {grand_success + grand_failed}")
     print("===================================")
-
-
-def build_processing_summary_excel_path(config, client_root):
-    summary_config = config.get("summary_excel", {})
-    folder = resolve_path(
-        client_root,
-        summary_config.get(
-            "folder",
-            config.get("logging", {}).get("log_folder", "./logs"),
-        ),
-    )
-    filename = summary_config.get("filename")
-
-    if not filename:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename_prefix = summary_config.get("filename_prefix", "invoice_parse_summary")
-        filename = f"{filename_prefix}_{timestamp}.xlsx"
-
-    return folder / filename
 
 
 def parse_vendor_folder(
@@ -392,7 +356,7 @@ def parse_vendor_folder(
             }
             failed_records.append(failed_record)
 
-            logger.write_error(failed_record)
+            # Do not write separate error_log; failures are counted in run_summary only.
 
             print_file_result({
                 "pdf_file": pdf_file.name,
@@ -441,7 +405,7 @@ def move_successful_invoices_after_excel(
         invoice["status"] = "success"
         invoice["error"] = ""
 
-        logger.write_success(invoice)
+        # Do not write separate success/summary logs; run_summary is written in run_client().
 
         moved_by_vendor[invoice_vendor_folder] = moved_by_vendor.get(invoice_vendor_folder, 0) + 1
 
@@ -454,9 +418,7 @@ def print_file_result(invoice):
         f"Vendor: {invoice.get('vendor_name', '')} | "
         f"Invoice No: {invoice.get('invoice_number', '')} | "
         f"Invoice Date: {invoice.get('invoice_date', '')} | "
-        f"Total Amount: {invoice.get('amount', '')} | "
-        f"Status: {invoice.get('status', '')} | "
-        f"Error: {invoice.get('error', '')}"
+        f"Total Amount: {invoice.get('amount', '')}"
     )
 
 
