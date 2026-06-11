@@ -234,13 +234,13 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
         
     set_if_exists(ws, row, headers, "SUPPLIERINVOICETRANSACTIONTYPE", excel_config.get("supplier_invoice_transaction_type", "1"), )
     set_if_exists(ws, row, headers, "COMPANYCODE", vendor_config.get("company_code", ""))
-    set_if_exists(ws, row, headers, "INVOICINGPARTY", vendor_config.get("vendor_code", ""))
-    set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", invoice.get("vendor_id", ""))
+    set_if_exists(ws, row, headers, "INVOICINGPARTY", invoice.get("vendor_id", ""))
+    set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", invoice.get("invoice_number", ""))
     
     set_date_if_exists(ws, row, headers, "DOCUMENTDATE", invoice_date)
     set_date_if_exists(ws, row, headers, "POSTINGDATE", posting_date)
     set_if_exists(ws, row, headers, "ACCOUNTINGDOCUMENTTYPE", excel_config.get("accounting_document_type", "NS"))
-    set_if_exists(ws,row,headers,"ACCOUNTINGDOCUMENTHEADERTEXT",f"{invoice.get('vendor_name', '')} Invoice {invoice.get('invoice_number', '')}", )
+    #set_if_exists(ws,row,headers,"ACCOUNTINGDOCUMENTHEADERTEXT",f"{invoice.get('vendor_name', '')} Invoice {invoice.get('invoice_number', '')}", )
     set_if_exists(ws, row, headers, "DOCUMENTCURRENCY", excel_config.get("document_currency", "USD"))
     set_if_exists(ws, row, headers, "INVOICEGROSSAMOUNT", amount)
 
