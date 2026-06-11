@@ -1,5 +1,5 @@
 import re
-from .base import BaseInvoiceParser, lookup_tax_center_id, lookup_company_code
+from .base import BaseInvoiceParser, lookup_tax_center_id, lookup_company_code,lookup_supplier_code
 
 
 class FleetPrideParser(BaseInvoiceParser):
@@ -24,7 +24,7 @@ class FleetPrideParser(BaseInvoiceParser):
 
         return {
             "vendor_name": vendor_name,
-            "Company_code":  lookup_company_code(vendor_name),
+            "vendor_id":  lookup_supplier_code(vendor_name),
             "vendor_address": "",
             "vendor_postcode": "",
             "ship_to_address": "",
@@ -107,7 +107,8 @@ class FleetPrideParser(BaseInvoiceParser):
     def _extract_balance_due(self, text):
         for pattern in [r"PLEASE\s+PAY\s*>?\s*THIS\s+TOTAL\s*>?\s*([0-9,]+\.\d{2})", 
                         r"PLEASE\s+PAY[\s\S]{0,120}?([0-9][0-9,\s]*[.]\s*\d\s*\d)",
-                        r"BALANCE\s+DUE[\s\S]{0,80}?\$?\s*([0-9][0-9,\s]*\.\s*\d{2})"
+                        r"BALANCE\s+DUE[\s\S]{0,80}?\$?\s*([0-9][0-9,\s]*\.\s*\d{2})",
+                        r"(?i)\bTOTAL\b\s*\n?\s*(\d+\.\d{2})", #DITCH WITCH
                        ]:
             m = re.search(pattern, text, re.IGNORECASE)
             if m:

@@ -4,21 +4,21 @@ from app.pdf_text import extract_pdf_text
 from app.parsers.fleetpride_parser import FleetPrideParser
 from app.parsers.valvoline_parser import ValvolineParser
 #from app.parsers.GenericAPParser import GenericAPParser
-#pdf_file = r"C:\PYTHON\invoice_automation_full_project_v4\invoice_automation\clients\sample_client\processed\FLEETPRIDE\FLEETPRIDE INV # 134869923.pdf"
+pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\RDO INV # P5969477.PDF"
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\sample_client\downloads\OILVANDOR\MY FLEET CENTER INV # 99923980.pdf"
-#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\OILVENDOR\MY FLEET CENTER INV # 99923980.pdf"
-#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\OILVENDOR\VALVOLINE INV # 167142.pdf"
-pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\THE CHARLES MACHINE INV # 93968775.PDF"
-pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\FLEETPRIDE INV # 134882087.PDF"
-pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\DITCH WITCH WEST INV # 1005638 VENDOR ID # V01988.pdf"
-#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\F005632-154281-001 - ENTERED.pdf"
+#pass pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\DITCH WITCH INV # 1051257.pdf"
+#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\Invoice_882430_.pdf"
+#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\DELTA TRUCK CENTER INV R008177111 01.pdf"
+#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\PAPE KENWORTH INV # 16160709.pdf"
+#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\RANDALL CREEK INV # 260302.pdf"
+##FAIL
+#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\CONTINENTAL INV # 5055242618 $ 1924.22.pdf"
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\67000553452.pdf"
 def main():
     print(pdf_file)
     text, pdf_type = extract_pdf_text(pdf_file)
 
-    #parser = ValvolineParser()
-    #parser = JiffyLubeParser()
+    parser = ValvolineParser()
     parser = FleetPrideParser()
 
     print(text)
@@ -31,7 +31,7 @@ def main():
 
     print("\n========== VALIDATION ==========\n")
  
-    print(f"[OK] Amount Found: {invoice['Company_code']}")
+    print(f"[OK] Amount Found: {invoice['vendor_id']}")
     
     if invoice.get("amount"):
         print(f"[OK] Amount Found: {invoice['amount']}")

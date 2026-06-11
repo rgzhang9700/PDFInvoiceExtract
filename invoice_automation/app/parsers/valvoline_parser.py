@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from .base import BaseInvoiceParser, lookup_tax_center_id, lookup_company_code
+from .base import BaseInvoiceParser, lookup_tax_center_id, lookup_supplier_code
 from .address_helpers import find_us_zip
 from datetime import datetime
 
@@ -19,7 +19,7 @@ class ValvolineParser(BaseInvoiceParser):
         postcode_lookup = (ship_to_postcode or service_center_postcode or vendor_postcode)
         return {
             "vendor_name": vendor_name,
-            "Company_code": lookup_company_code(vendor_name),
+            "vendor_id": lookup_supplier_code(vendor_name),
             "vendor_address": vender_address,
             "vendor_postcode": self._find_postcode(vender_address),
             "ship_to_postcode": self._find_postcode(ship_to_address),
@@ -36,12 +36,14 @@ class ValvolineParser(BaseInvoiceParser):
         
     def _find_invoice_number(self, text):
         for pattern in [r"Invoice\s+(\d+)", 
-                        r"lnvoice\s+(\d+)", 
                         r"Invoice\s*#?\s*(\d+)", 
                         r"Invoice #\s*:\s+(\d+)",
                         r"\bINVOICE\s+NUMBER\b[\s\S]{0,120}?(\d{6,})", 
                         r"INVOICE\s+NO\.?\s*\n\s*\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+(\d+)",
-                        r"\bInvoice\s*:\s*(\d+)"]:
+                        r"\bInvoice\s*:\s*(\d+)",
+                        r"INVOICE\s+DATE\s+INVOICE\s+NO\.?\s*\n?\s*\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+(\d+)", #DITCH WITCH EUGENE
+                        r"(?i)\binvoice\s*n[o0]\s*\.?\s*[:#-]?\s*(\d{4,})", #RANDALL
+                        ]:
             m = re.search(pattern, text, re.IGNORECASE)
             if m:
                 return m.group(1)
@@ -93,13 +95,14 @@ class ValvolineParser(BaseInvoiceParser):
         return ""
         
     def _find_total(self, text):
-        for pattern in [r"\bTotal\s+([0-9,]+\.\d{2})",
-                        r"\bTotal\s+([0-9,]+)",
+        for pattern in [r"\bTotal\s*[:\-]?\s*[$S8]?\s*([0-9,]+\.\d{2})",
+                        r"\bTotal\s*[:\-]?\s*[$S8]?\s*([0-9,]+)",
                         r"Amount\s*due\s*[$8]?\s*([-\d,]+\.\d{2})",
                         r"Total\s+Amount\s+USD[\s\S]{0,80}?\$?\s*([0-9,]+\.\d{2})",
                         r"PLEASE\s+PAY\s*>?\s*THIS\s+TOTAL\s*>?\s*([0-9,]+\.\d{2})", 
                         r"PLEASE\s+PAY[\s\S]{0,120}?([0-9][0-9,\s]*[.]\s*\d\s*\d)",
                         r"Invoice\s+Total\s*:\s*\$?\s*([0-9,]+\.\d{2})",
+                        r"Amount\s*Due\s*:\s*[$S8]?\s*([0-9,]+\.\d{2})"
                         ]:
             matches = re.findall(pattern, text, re.IGNORECASE)
             if matches:
