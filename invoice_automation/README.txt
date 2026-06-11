@@ -1,0 +1,1 @@
+python run_client.py --client-config clients/northsky_comm/config.yaml
