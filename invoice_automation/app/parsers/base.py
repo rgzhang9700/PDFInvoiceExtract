@@ -112,6 +112,94 @@ def lookup_company_code(supplier_name, lookup_file=None):
     return ""
 
 
+def lookup_supplier_code(supplier_name, lookup_file=None):
+    """
+    Look up SAP Supplier code from SupplierLists.xlsx by supplier/vendor name.
+
+    Search order:
+        1. VENDORS sheet
+        2. Parsers sheet
+
+    No SAPUI5 Export fallback.
+
+    Example:
+        VALVOLINE INSTANT OIL CHANGE -> V03884
+        JIFFY LUBE -> V02305
+
+    This is different from lookup_company_code():
+        lookup_company_code() returns company code like 4600
+        lookup_supplier_code() returns supplier/vendor code like V03884
+    """
+    if not supplier_name:
+        return ""
+
+    search_name = str(supplier_name).strip().upper()
+    lookup_file = Path(lookup_file) if lookup_file else _default_supplier_lookup_file()
+    if not lookup_file.exists():
+        return ""
+
+    def _find_from_sheet(sheet_name):
+        try:
+            df = pd.read_excel(lookup_file, sheet_name=sheet_name, dtype=str)
+            df.columns = [str(c).strip() for c in df.columns]
+
+            name_col = None
+            supplier_col = None
+
+            for col in df.columns:
+                col_key = col.strip().upper().replace(" ", "").replace("_", "")
+
+                if col_key in (
+                    "VENDORNAME",
+                    "VENDOR",
+                    "NAMEOFSUPPLIER",
+                    "SUPPLIERNAME",
+                    "NAME",
+                ):
+                    name_col = col
+
+                if col_key in (
+                    "SUPPLIER",
+                    "SUPPLIERCODE",
+                    "SUPPLIERID",
+                    "VENDORID",
+                    "VENDORCODE",
+                    "BUSINESSPARTNER",
+                ):
+                    supplier_col = col
+
+            if not name_col or not supplier_col:
+                return ""
+
+            # Exact match first. Skip blank Supplier values.
+            for _, row in df.iterrows():
+                vendor_name = str(row.get(name_col, "") or "").strip().upper()
+                supplier = str(row.get(supplier_col, "") or "").strip()
+
+                if vendor_name == search_name and supplier:
+                    return supplier
+
+            # Partial match fallback. Skip blank Supplier values.
+            for _, row in df.iterrows():
+                vendor_name = str(row.get(name_col, "") or "").strip().upper()
+                supplier = str(row.get(supplier_col, "") or "").strip()
+
+                if vendor_name and supplier and (search_name in vendor_name or vendor_name in search_name):
+                    return supplier
+
+        except Exception:
+            return ""
+
+        return ""
+
+    for sheet_name in ("VENDORS", "Parsers"):
+        result = _find_from_sheet(sheet_name)
+        if result:
+            return result
+
+    return ""
+
+
 class BaseInvoiceParser(ABC):
     @abstractmethod
     def parse(self, text):
@@ -195,6 +283,9 @@ class BaseInvoiceParser(ABC):
     def lookup_company_code(self, supplier_name, lookup_file=None):
         return lookup_company_code(supplier_name, lookup_file=lookup_file)
 
+    def lookup_supplier_code(self, supplier_name, lookup_file=None):
+        return lookup_supplier_code(supplier_name, lookup_file=lookup_file)
+
     def _find_vendor_name(self, text):
         patterns = [
             r"(VALVOLINE(?:\s+INSTANT\s+OIL\s+CHANGE)?)",
@@ -204,6 +295,10 @@ class BaseInvoiceParser(ABC):
             r"(DITCH\s+WITCH(?:\s+WEST)?)",
             r"(LES\s+SCHWAB)",
             r"(TIPCO\s+TECHNOLOGIES)",
+            r"(PAP[ÉE]\s+KENWORTH)",
+            r"(NAPA)",
+            r"(Randall\s+Creek\s+Sweeping)",
+            r"(RDO\s+EQUIPMENT\s+CO)",
         ]
 
         for pattern in patterns:
@@ -212,6 +307,7 @@ class BaseInvoiceParser(ABC):
                 vendor_name = m.group(1).upper()
                 vendor_name = vendor_name.replace("JIFFYLUBE", "JIFFY LUBE")
                 vendor_name = vendor_name.replace("JEFFLUBE", "JIFFY LUBE")
+                vendor_name = vendor_name.replace("PAPÉ KENWORTH", "PAPE KENWORTH NORTHWEST")
                 return vendor_name
 
         return ""

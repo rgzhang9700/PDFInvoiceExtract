@@ -68,6 +68,7 @@ vendors:
     template_file: "./templates/Invoice_Template_no_PO.XLSX"
     output_folder: "./output"
     cost_center: "460020450"
+    company_code: 4600
     tax_code: "I0"
     parser: "ValvolineParser"
     gl_account: "51000100"
