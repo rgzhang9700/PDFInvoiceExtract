@@ -216,7 +216,7 @@ class BaseInvoiceParser(ABC):
         text = text.replace("\xa0", " ")
         text = text.replace("\t", " ")
         text = text.replace("，", ",")
-        text = text.replace("．", ".")
+        #text = text.replace("．", ".")
         text = text.replace("：", ":")
         text = text.replace("–", "-")
         text = text.replace("—", "-")
@@ -288,17 +288,11 @@ class BaseInvoiceParser(ABC):
 
     def _find_vendor_name(self, text):
         patterns = [
-            r"(VALVOLINE(?:\s+INSTANT\s+OIL\s+CHANGE)?)",
+            r"(VALVOLINE(?:\s+INSTANT\s+OIL\s+CHANGE)?|\bDELTA\s+TRUCK\s+CENTER\b|HYDRAULIC CONTROLS|WAGNER-SMITH EQUIPMENT CO)",
             r"(jiffy\s*lube|jiffylube|jefflube)",
-            r"(THE\s+CHARLES\s+MACHINE\s+WORKS)",
-            r"(FLEETPRIDE)",
-            r"(DITCH\s+WITCH(?:\s+WEST)?)",
-            r"(LES\s+SCHWAB)",
-            r"(TIPCO\s+TECHNOLOGIES)",
-            r"(PAP[ÉE]\s+KENWORTH)",
-            r"(NAPA)",
-            r"(Randall\s+Creek\s+Sweeping)",
-            r"(RDO\s+EQUIPMENT\s+CO)",
+            r"(THE\s+CHARLES\s+MACHINE\s+WORKS|FLEETPRIDE|LES\s+SCHWAB|DITCH\s+WITCH(?:\s+WEST)?|NAPA)",
+            r"(Randall\s+Creek\s+Sweeping|RDO\s+EQUIPMENT\s+CO|Continental Tire the Americas|PAPE\s+\n?MACHINERY|PAP[ÉE]\s+KENWORTH|TIPCO\s+TECHNOLOGIES)",
+            r"(\bALTEC\b|\bAERIAL\b|linemen-tools\.com)",
         ]
 
         for pattern in patterns:

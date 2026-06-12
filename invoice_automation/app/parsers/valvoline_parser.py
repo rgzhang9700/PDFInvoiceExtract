@@ -1,7 +1,6 @@
 import re
 from datetime import datetime
 from .base import BaseInvoiceParser, lookup_tax_center_id, lookup_supplier_code
-from .address_helpers import find_us_zip
 from datetime import datetime
 
 class ValvolineParser(BaseInvoiceParser):
@@ -104,14 +103,26 @@ class ValvolineParser(BaseInvoiceParser):
                         r"Invoice\s+Total\s*:\s*\$?\s*([0-9,]+\.\d{2})",
                         r"Amount\s*Due\s*:\s*[$S8]?\s*([0-9,]+\.\d{2})"
                         ]:
-            matches = re.findall(pattern, text, re.IGNORECASE)
+            matches = re.findall(pattern, text or "", re.IGNORECASE)
             if matches:
-                value = matches[-1].replace(",", "")
+                value = matches[-1]
+
+                # If regex ever returns tuple, take first non-empty group
+                if isinstance(value, tuple):
+                    value = next((v for v in value if v), "")
+
+                value = str(value)
+                value = value.replace(",", "")
+                value = value.replace(" ", "")
+                value = value.replace("$", "")
+                value = value.replace("S", "")
+                value = value.replace("s", "")
+
                 try:
-                    return float(value)
+                    round(float(value))
                 except ValueError:
-                    return value
-        return ""
+                    continue
+        return 0.0
 
     def _find_po_number(self, text):
         patterns = [

@@ -14,11 +14,12 @@ pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_com
 ##FAIL
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\CONTINENTAL INV # 5055242618 $ 1924.22.pdf"
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\67000553452.pdf"
+pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\WHITECAP INV # 50033132660.pdf"
 def main():
     print(pdf_file)
     text, pdf_type = extract_pdf_text(pdf_file)
 
-    parser = ValvolineParser()
+    #parser = ValvolineParser()
     parser = FleetPrideParser()
 
     print(text)
