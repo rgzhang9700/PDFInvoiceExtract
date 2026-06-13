@@ -107,23 +107,8 @@ class ValvolineParser(BaseInvoiceParser):
             matches = re.findall(pattern, text or "", re.IGNORECASE)
             if matches:
                 value = matches[-1]
-
-                # If regex ever returns tuple, take first non-empty group
-                if isinstance(value, tuple):
-                    value = next((v for v in value if v), "")
-
-                value = str(value)
-                value = value.replace(",", "")
-                value = value.replace(" ", "")
-                value = value.replace("$", "")
-                value = value.replace("S", "")
-                value = value.replace("s", "")
-
-                try:
-                    round(float(value))
-                except ValueError:
-                    continue
-        return round(float("100"), 2)
+                return value.replace(",", "").replace(" ", "")
+        return ""
 
     def _find_po_number(self, text):
         patterns = [

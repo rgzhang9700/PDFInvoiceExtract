@@ -1,6 +1,7 @@
 from pathlib import Path
 import shutil
 import math
+import re
 from datetime import datetime
 import openpyxl
 
@@ -143,6 +144,52 @@ def get_invoice_post_code(invoice):
     return ""
 
 
+
+
+def to_number(value):
+    """Convert invoice amount text to a real Excel number.
+
+    Examples supported:
+    49.10, "$49.10", "1,148.98", "s1,148. 98", "Total $2,185.00".
+    Returns None when no usable number is found, so Excel cell stays blank.
+    """
+    if value is None or value == "":
+        return None
+
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    s = str(value).strip()
+    if not s:
+        return None
+
+    # Common OCR fixes: s/S before amount can mean $, and spaces may appear around decimal point.
+    s = s.replace("$", "").replace(",", "")
+    s = re.sub(r"(?i)\bs(?=\d)", "", s)
+    s = re.sub(r"(?<=\d)\s*[\.]\s*(?=\d{2}\b)", ".", s)
+
+    # Keep the last amount-like number in case the string contains labels before it.
+    matches = re.findall(r"-?\d+(?:\.\d{1,2})?", s)
+    if not matches:
+        return None
+
+    try:
+        return float(matches[-1])
+    except ValueError:
+        return None
+
+
+def set_number_format_if_exists(ws, row, headers, header_name, number_format="#,##0.00"):
+    col = headers.get(header_name)
+    if col:
+        ws.cell(row=row, column=col).number_format = number_format
+
+
+def set_text_format_if_exists(ws, row, headers, header_name):
+    col = headers.get(header_name)
+    if col:
+        ws.cell(row=row, column=col).number_format = "@"
+
 def find_header_row(ws):
     for row in range(1, ws.max_row + 1):
         values = [
@@ -220,7 +267,7 @@ def set_date_if_exists(ws, row, headers, field_name, value):
 
 
 def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, line_number):
-    amount = invoice.get("amount", "")
+    amount = to_number(invoice.get("amount", ""))
     invoice_date = invoice.get("invoice_date") or datetime.today()
     posting_date = datetime.today()
     TaxCenterID = invoice.get("TaxCenterID", "")
@@ -234,7 +281,11 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
         
     set_if_exists(ws, row, headers, "SUPPLIERINVOICETRANSACTIONTYPE", excel_config.get("supplier_invoice_transaction_type", "1"), )
     set_if_exists(ws, row, headers, "COMPANYCODE", vendor_config.get("company_code", ""))
-    set_if_exists(ws, row, headers, "INVOICINGPARTY", invoice.get("vendor_id", ""))
+
+    # Invoicing Party / Supplier ID must stay text, so SAP IDs keep leading zeros.
+    invoicing_party = str(invoice.get("vendor_id", "")).strip()
+    set_if_exists(ws, row, headers, "INVOICINGPARTY", invoicing_party)
+
     set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", invoice.get("invoice_number", ""))
     
     set_date_if_exists(ws, row, headers, "DOCUMENTDATE", invoice_date)
@@ -252,6 +303,16 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     set_if_exists(ws, row, headers, "TAXJURISDICTION", TaxCenterID)
     set_if_exists(ws, row, headers, "COSTCENTER", vendor_config.get("cost_center", ""))
     set_if_exists(ws, row, headers, "DOCUMENTITEMTEXT", vendor_config.get("item_text", ""))
+
+    # Force SAP upload columns to the correct Excel formats.
+    # D = Invoicing Party; K = Gross Invoice Amount; BW = line item amount in this template.
+    set_text_format_if_exists(ws, row, headers, "INVOICINGPARTY")
+    set_number_format_if_exists(ws, row, headers, "INVOICEGROSSAMOUNT")
+    set_number_format_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMAMOUNT")
+
+    for col_letter, number_format in {"D": "@", "K": "#,##0.00", "BW": "#,##0.00"}.items():
+        ws[f"{col_letter}{row}"].number_format = number_format
+
     ws.cell(row=row, column=71).value = vendor_config.get("company_code", "")
 
 

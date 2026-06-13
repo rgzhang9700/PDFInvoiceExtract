@@ -14,7 +14,8 @@ pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_com
 ##FAIL
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\CONTINENTAL INV # 5055242618 $ 1924.22.pdf"
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\67000553452.pdf"
-pdf_file = r"C:\PYTHONCODE\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\CONTINENTAL TIRES INV # 5047289398 $ 721.59 (1).pdf"
+pdf_file = r"C:\PYTHONCODE\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\CONTINENTAL TIRES INV # 5047289396 $ 735.75.pdf"
+pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\CONTINENTAL INV # 5055242618 $ 1924.22.pdf"
 def main():
     print(pdf_file)
     text, pdf_type = extract_pdf_text(pdf_file)

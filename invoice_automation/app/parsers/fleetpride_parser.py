@@ -187,21 +187,6 @@ class FleetPrideParser(BaseInvoiceParser):
                 if isinstance(value, tuple):
                     value = next((v for v in value if v), "")
 
-                value = str(value)
-                value = value.replace(",", "")
-                value = value.replace(" ", "")
-                value = value.replace("$", "")
-                value = value.replace("S", "")
-                value = value.replace("s", "")
+                return value.replace(",", "").replace(" ", "")
 
-                # PAPE OCR can read TOTAL / 63 / 15 as "63 15".
-                # After removing spaces above it becomes "6315", so fix before float.
-                if re.fullmatch(r"\d{3,}", value) and pattern.startswith(r"\bTOTAL\b"):
-                    value = value[:-2] + "." + value[-2:]
-
-                try:
-                    return round(float(value), 2)
-                except ValueError:
-                    continue
-
-        return round(float("100"), 2)
+        return ""
