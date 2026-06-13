@@ -300,6 +300,7 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     set_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMAMOUNT", amount)
     set_if_exists(ws, row, headers, "TAXCODE", vendor_config.get("tax_code", ""))
     set_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMTEXT", (invoice.get("ItemText") or "Supplies"))
+    set_text_format_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMTEXT")
     set_if_exists(ws, row, headers, "TAXJURISDICTION", TaxCenterID)
     set_if_exists(ws, row, headers, "COSTCENTER", vendor_config.get("cost_center", ""))
 
