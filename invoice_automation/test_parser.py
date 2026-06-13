@@ -15,7 +15,7 @@ pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_com
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\CONTINENTAL INV # 5055242618 $ 1924.22.pdf"
 pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\DELTA TRUCK INV # FA008541446 01.pdf"
 #pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\DITCH WITCH INV # 1301077.pdf"
-#pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\LANDMARK FORD INV # 4089810.pdf"
+pdf_file = r"C:\PYTHON\PDFInvoiceExtract\invoice_automation\clients\northsky_comm\downloads\RDO INV # P5200777.PDF"
 def main():
     print(pdf_file)
     text, pdf_type = extract_pdf_text(pdf_file)
@@ -24,7 +24,7 @@ def main():
     parser = FleetPrideParser()
 
     print(text)
-    invoice = parser.parse(text)
+    invoice = parser.parse(text, file_path = pdf_file)
 
     print("\n========== PARSED RESULT ==========\n")
 

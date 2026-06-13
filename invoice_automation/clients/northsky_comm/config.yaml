@@ -66,6 +66,7 @@ vendors:
   GENERAL:
     input_folder: "./downloads"
     template_file: "./templates/Invoice_Template_no_PO.XLSX"
+    supplier_lookup_file: "./templates/SupplierLists.xlsx"
     output_folder: "./output"
     cost_center: "460020450"
     company_code: 4600

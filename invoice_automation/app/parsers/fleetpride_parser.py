@@ -1,26 +1,23 @@
 import re
-from .base import BaseInvoiceParser, lookup_tax_center_id, lookup_company_code, lookup_supplier_code
-from datetime import datetime
+from .base import BaseInvoiceParser, lookup_tax_center_id, lookup_company_code, lookup_supplier_code,extract_vendor_invoice_from_filename
+from datetime import datetime, timedelta
 
 class FleetPrideParser(BaseInvoiceParser):
-    def parse(self, text, ocr_results=None, image_width=None, image_height=None, source_path=None):
+    vendor_name = ""
+    def parse(self, text, file_path):
         raw_text = text or ""
         clean_text = self._clean_ocr_text(raw_text)
         text = self._clean_ocr_one_line(raw_text)
+        
+        filename_info = extract_vendor_invoice_from_filename(file_path) if file_path else {}
 
-        vendor_name = self._find_vendor_name(text)
-        if not vendor_name and re.search(r"\bWHITE\s+CAP\b", text, re.I):
-            vendor_name = "WHITE CAP"
-        if not vendor_name and re.search(r"\bRDO\s+EQUIPMENT\b", text, re.I):
-            vendor_name = "RDO EQUIPMENT CO"
-        if not vendor_name and re.search(r"\bPAP[ÉE]\s+MACHINERY\b", text, re.I):
-            vendor_name = "PAPE MACHINERY"
+        vendor_name = self._find_vendor_name(text) or filename_info.get("vendor_name") or " "
+        supplier_info = lookup_supplier_code(vendor_name)
 
-        ship_to_postcode = self._ship_to_zip_from_2col_text(raw_text) or self._extract_ship_to_postcode(text)
-
-        invoice_number = self._extract_invoice_number(text)
+        invoice_number = filename_info.get("invoice_number")  or self._extract_invoice_number(text)
         invoice_date = self._extract_invoice_date(text)
-
+        ship_to_postcode = self._ship_to_zip_from_2col_text(raw_text) or self._extract_ship_to_postcode(text)
+        
         # Continental/FleetPride format:
         # ORDER DATE ... BILLING DATE NUMBER
         # 06 09 26 ... 06 08 26 5055242618
@@ -34,7 +31,7 @@ class FleetPrideParser(BaseInvoiceParser):
 
         return {
             "vendor_name": vendor_name,
-            "vendor_id":  lookup_supplier_code(vendor_name),
+            "vendor_id":  supplier_info["Supplier"],
             "vendor_address": "",
             "vendor_postcode": "",
             "ship_to_address": "",
@@ -44,6 +41,9 @@ class FleetPrideParser(BaseInvoiceParser):
             "amount": self._extract_balance_due(text),
             "CompanyCode": lookup_company_code(vendor_name),
             "TAXCenterID": lookup_tax_center_id(ship_to_postcode),
+            "gl_account": supplier_info["GLAccount"],
+            "ItemText": supplier_info["ItemText"],
+            "Payee": supplier_info["Payee"],
         }
 
     def _ship_to_zip_from_2col_text(self, text):
@@ -125,7 +125,7 @@ class FleetPrideParser(BaseInvoiceParser):
         if m:
             return f"{m.group(1)}/{m.group(2)}"
 
-        return datetime.now().strftime("%m/%d/%Y")
+        return (datetime.today() - timedelta(days=1)).strftime("%m/%d/%Y")
 
     def _extract_invoice_number(self, text):
         text = text or ""
@@ -179,6 +179,8 @@ class FleetPrideParser(BaseInvoiceParser):
             r"AMOUNT\s+DUE\s*[$S8]?\s*([0-9,]+\.\d{2})", #HYDRAULIC CONTROLS
             r"\bTotal\s*[$S8]?\s*([0-9,]+\.\d{2})", #RANDLL CREEK
             r"TOTAL\s*:?\s*\$?\s*([0-9,]+(?:\s*\.\s*[0-9]{2}))",
+            r"PAY\s+THIS(?:\s+AMOUNT)?\s*\$?\s*([0-9,]+(?:\.\s*\d{2})?)",  # Peterson
+            r"TOTAL\s+ACCOUNT\s+BALANCE\s*\$?\s*([0-9,]+(?:\.\s*\d{2})?)", #MEDESTO
         ]:
             matches = re.findall(pattern, text or "", re.IGNORECASE)
 

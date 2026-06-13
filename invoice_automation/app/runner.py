@@ -26,7 +26,7 @@ def load_parser_rules(client_root):
         sheet: Parsers
 
     Expected columns:
-        Vendor Name | Supplier | Parser
+        VendorName | Supplier | Parser
 
     If no match is found later, default parser is ValvolineParser.
     """
@@ -52,12 +52,12 @@ def load_parser_rules(client_root):
         if value:
             headers[str(value).strip().upper()] = col
 
-    vendor_col = headers.get("VENDOR NAME")
+    vendor_col = headers.get("VENDORNAME")
     parser_col = headers.get("PARSER")
     supplier_col = headers.get("SUPPLIER")
 
     if not vendor_col or not parser_col:
-        print("SupplierLists.xlsx Parsers sheet must have 'Vendor Name' and 'Parser' columns.")
+        print("SupplierLists.xlsx Parsers sheet must have 'VendorName' and 'Parser' columns.")
         return []
 
     rules = []
@@ -84,11 +84,11 @@ def load_parser_rules(client_root):
 
 def detect_parser(text, parser_rules=None):
     """
-    Pick parser using vendor name.
+    Pick parser using vendorname.
 
     Simple logic:
-        1. Use default ValvolineParser to find vendor name.
-        2. Match that vendor name against SupplierLists.xlsx / Parsers sheet.
+        1. Use default ValvolineParser to find vendorname.
+        2. Match that vendorname against SupplierLists.xlsx / Parsers sheet.
         3. Use the Parser from the matching row.
         4. If nothing matches, default to ValvolineParser.
     """
@@ -111,7 +111,7 @@ def detect_parser(text, parser_rules=None):
                 break
 
     vendor_name_upper = (vendor_name or "").upper()
-    print(f"Detected vendor name: {vendor_name}")
+    print(f"Detected vendorname: {vendor_name}")
 
     for rule in parser_rules:
         rule_vendor = rule.get("vendor_name", "").upper()
@@ -310,7 +310,7 @@ def parse_vendor_folder(
             parser = detect_parser(text, parser_rules=parser_rules)
             print(f"Using parser: {parser.__class__.__name__}")
 
-            invoice = parser.parse(text)
+            invoice = parser.parse(text, file_path=pdf_file)
 
             invoice["vendor_folder"] = vendor_folder
             invoice["pdf_type"] = pdf_type

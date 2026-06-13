@@ -295,14 +295,13 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     set_if_exists(ws, row, headers, "DOCUMENTCURRENCY", excel_config.get("document_currency", "USD"))
     set_if_exists(ws, row, headers, "INVOICEGROSSAMOUNT", amount)
 
-    set_if_exists(ws, row, headers, "GLACCOUNT", vendor_config.get("gl_account", ""))
+    set_if_exists(ws, row, headers, "GLACCOUNT", (invoice.get("GLAccount") or "51000100"))
     set_if_exists(ws, row, headers, "DEBITCREDITCODE", "S")
     set_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMAMOUNT", amount)
     set_if_exists(ws, row, headers, "TAXCODE", vendor_config.get("tax_code", ""))
-    set_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMTEXT", vendor_config.get("item_text", "OIL CHANGE"))
+    set_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMTEXT", (invoice.get("ItemText") or "Supplies"))
     set_if_exists(ws, row, headers, "TAXJURISDICTION", TaxCenterID)
     set_if_exists(ws, row, headers, "COSTCENTER", vendor_config.get("cost_center", ""))
-    set_if_exists(ws, row, headers, "DOCUMENTITEMTEXT", vendor_config.get("item_text", ""))
 
     # Force SAP upload columns to the correct Excel formats.
     # D = Invoicing Party; K = Gross Invoice Amount; BW = line item amount in this template.

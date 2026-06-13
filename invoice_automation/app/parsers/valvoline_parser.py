@@ -1,36 +1,52 @@
 import re
 from datetime import datetime
-from .base import BaseInvoiceParser, lookup_tax_center_id, lookup_supplier_code
-from datetime import datetime
+from .base import BaseInvoiceParser, lookup_tax_center_id, lookup_supplier_code,extract_vendor_invoice_from_filename
+from datetime import datetime, timedelta
 
 class ValvolineParser(BaseInvoiceParser):
-    def parse(self, text):
+    
+    def parse(self, text, file_path):
         raw_text = text
         clean_text = self._clean_ocr_text(raw_text)
         text = self._clean_ocr_one_line(raw_text)
+        
+        if file_path:
+            filename_info = extract_vendor_invoice_from_filename(file_path)
+            vendor_name = filename_info.get("vendor_name")
+            invoice_number = filename_info.get("invoice_number") 
+        else:
+            vendor_name = self._find_vendor_name(text) 
+            invoice_number = self._find_invoice_number(text)
+
         service_address = self._find_service_center_address(text)
         ship_to_address = self._find_ship_to_address(text)
         vender_address = self._find_vendor_address(text)
         ship_to_postcode = self._find_postcode(ship_to_address)
         service_center_postcode =  self._find_postcode(service_address)
         vendor_postcode = self._find_postcode(vender_address)
-        vendor_name = self._find_vendor_name(text)
         postcode_lookup = (ship_to_postcode or service_center_postcode or vendor_postcode)
+       
+        supplier_info = lookup_supplier_code(vendor_name)
+        
+        
         return {
             "vendor_name": vendor_name,
-            "vendor_id": lookup_supplier_code(vendor_name),
+            "vendor_id": supplier_info["Supplier"],
             "vendor_address": vender_address,
             "vendor_postcode": self._find_postcode(vender_address),
             "ship_to_postcode": self._find_postcode(ship_to_address),
             "ship_to_address": ship_to_address,
             "service_center_address": service_address,
             "service_center_postcode": self._find_postcode(service_address),
-            "invoice_number": self._find_invoice_number(text),
+            "invoice_number": invoice_number,
             "invoice_date": self._find_invoice_date(text),
             "amount": self._find_total(text),
             "po_number": self._find_po_number(text),
             "postcode_lookup" : postcode_lookup,
             "TAXCenterID": lookup_tax_center_id(postcode_lookup),
+            "gl_account": supplier_info["GLAccount"],
+            "ItemText": supplier_info["ItemText"],
+            "Payee": supplier_info["Payee"],
         }   
         
     def _find_invoice_number(self, text):
@@ -91,7 +107,7 @@ class ValvolineParser(BaseInvoiceParser):
                 except ValueError:
                     pass
 
-        return datetime.now().strftime("%m/%d/%Y")
+        return  (datetime.today() - timedelta(days=1)).strftime("%m/%d/%Y")
         
     def _find_total(self, text):
         for pattern in [r"\bTotal\s*[:\-]?\s*[$S8]?\s*([0-9,]+\.\d{2})",
