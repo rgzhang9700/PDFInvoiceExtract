@@ -20,6 +20,41 @@ def _default_supplier_lookup_file():
     return _project_root() / "clients" / "northsky_comm" / "templates" / "SupplierLists.xlsx"
 
 
+
+
+def _normalize_excel_key(value):
+    """Normalize Excel sheet/column names for case-insensitive lookup."""
+    return re.sub(r"[^A-Z0-9]", "", str(value or "").upper())
+
+
+def _read_excel_sheet_case_insensitive(lookup_file, sheet_names, dtype=str):
+    """
+    Read the first existing sheet from sheet_names, ignoring case/spaces.
+    Example: "VENDORS", "Vendors", and "vendors" all match.
+    """
+    lookup_file = Path(lookup_file)
+    xls = pd.ExcelFile(lookup_file)
+
+    wanted = {_normalize_excel_key(name): name for name in sheet_names}
+    for actual_sheet in xls.sheet_names:
+        actual_key = _normalize_excel_key(actual_sheet)
+        if actual_key in wanted:
+            df = pd.read_excel(lookup_file, sheet_name=actual_sheet, dtype=dtype)
+            df.columns = [str(c).strip() for c in df.columns]
+            return df, actual_sheet
+
+    return None, ""
+
+
+def _find_column(df, possible_names):
+    """Find a column by normalized name."""
+    possible_keys = {_normalize_excel_key(name) for name in possible_names}
+    for col in df.columns:
+        if _normalize_excel_key(col) in possible_keys:
+            return col
+    return None
+
+
 def lookup_tax_center_id(postcode, lookup_file=None):
     """
     Look up TaxCenterID from TAXCenterLookup.xlsx by postcode.
@@ -114,21 +149,18 @@ def lookup_company_code(supplier_name, lookup_file=None):
 
 def lookup_supplier_code(supplier_name, lookup_file=None):
     """
-    Look up SAP Supplier code from SupplierLists.xlsx by supplier/vendor name.
+    Look up supplier/vendor code from SupplierLists.xlsx.
 
     Search order:
-        1. VENDORS sheet
+        1. Vendors sheet
         2. Parsers sheet
 
-    No SAPUI5 Export fallback.
+    This supports sheet names with different capitalization, such as
+    "VENDORS", "Vendors", or "vendors".
 
     Example:
         VALVOLINE INSTANT OIL CHANGE -> V03884
         JIFFY LUBE -> V02305
-
-    This is different from lookup_company_code():
-        lookup_company_code() returns company code like 4600
-        lookup_supplier_code() returns supplier/vendor code like V03884
     """
     if not supplier_name:
         return ""
@@ -138,35 +170,32 @@ def lookup_supplier_code(supplier_name, lookup_file=None):
     if not lookup_file.exists():
         return ""
 
-    def _find_from_sheet(sheet_name):
+    name_columns = (
+        "Vendor Name",
+        "Vendor",
+        "Name of Supplier",
+        "Supplier Name",
+        "Name",
+    )
+
+    supplier_columns = (
+        "Supplier",
+        "Supplier Code",
+        "Supplier ID",
+        "Vendor ID",
+        "Vendor Code",
+        "Business Partner",
+        "Invoicing Party",
+    )
+
+    def _find_from_sheet(sheet_names):
         try:
-            df = pd.read_excel(lookup_file, sheet_name=sheet_name, dtype=str)
-            df.columns = [str(c).strip() for c in df.columns]
+            df, actual_sheet = _read_excel_sheet_case_insensitive(lookup_file, sheet_names, dtype=str)
+            if df is None:
+                return ""
 
-            name_col = None
-            supplier_col = None
-
-            for col in df.columns:
-                col_key = col.strip().upper().replace(" ", "").replace("_", "")
-
-                if col_key in (
-                    "VENDORNAME",
-                    "VENDOR",
-                    "NAMEOFSUPPLIER",
-                    "SUPPLIERNAME",
-                    "NAME",
-                ):
-                    name_col = col
-
-                if col_key in (
-                    "SUPPLIER",
-                    "SUPPLIERCODE",
-                    "SUPPLIERID",
-                    "VENDORID",
-                    "VENDORCODE",
-                    "BUSINESSPARTNER",
-                ):
-                    supplier_col = col
+            name_col = _find_column(df, name_columns)
+            supplier_col = _find_column(df, supplier_columns)
 
             if not name_col or not supplier_col:
                 return ""
@@ -192,10 +221,15 @@ def lookup_supplier_code(supplier_name, lookup_file=None):
 
         return ""
 
-    for sheet_name in ("VENDORS", "Parsers"):
-        result = _find_from_sheet(sheet_name)
-        if result:
-            return result
+    # 1. Try Vendors sheet first.
+    result = _find_from_sheet(("Vendors", "VENDORS"))
+    if result:
+        return result
+
+    # 2. If Vendors did not find it, try Parsers sheet.
+    result = _find_from_sheet(("Parsers", "PARSERS"))
+    if result:
+        return result
 
     return ""
 
