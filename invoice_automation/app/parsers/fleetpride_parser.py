@@ -178,6 +178,7 @@ class FleetPrideParser(BaseInvoiceParser):
             r"\bTotal\s*:\s*([0-9,]+\.\s*\d{2})",  # DELTA TRUCK CENTER final total
             r"AMOUNT\s+DUE\s*[$S8]?\s*([0-9,]+\.\d{2})", #HYDRAULIC CONTROLS
             r"\bTotal\s*[$S8]?\s*([0-9,]+\.\d{2})", #RANDLL CREEK
+            r"TOTAL\s*:?\s*\$?\s*([0-9,]+(?:\s*\.\s*[0-9]{2}))",
         ]:
             matches = re.findall(pattern, text or "", re.IGNORECASE)
 
