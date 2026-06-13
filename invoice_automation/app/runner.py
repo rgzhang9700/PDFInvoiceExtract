@@ -424,10 +424,10 @@ def print_file_result(invoice):
     print(
         f"File: {invoice.get('pdf_file', '')} | "
         f"Vendor: {invoice.get('vendor_name', '')} | "
-        f"Invoice No: {invoice.get('invoice_number', '')} | "
-        f"Invoice Date: {invoice.get('invoice_date', '')} | "
-        f"Total Amount: {invoice.get('amount', '')} | "
-        f"postcode_lookup: {postcode_lookup}"
+        f"No: {invoice.get('invoice_number', '')} | "
+        f"Date: {invoice.get('invoice_date', '')} | "
+        f"Total: {invoice.get('amount', '')} "
+        #f"postcode_lookup: {postcode_lookup}"
     )
 
 
