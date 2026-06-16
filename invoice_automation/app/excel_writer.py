@@ -307,6 +307,7 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     # Force SAP upload columns to the correct Excel formats.
     # D = Invoicing Party; K = Gross Invoice Amount; BW = line item amount in this template.
     set_text_format_if_exists(ws, row, headers, "INVOICINGPARTY")
+    set_text_format_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY")
     set_number_format_if_exists(ws, row, headers, "INVOICEGROSSAMOUNT")
     set_number_format_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMAMOUNT")
 
