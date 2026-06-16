@@ -9,14 +9,14 @@ class ValvolineParser(BaseInvoiceParser):
         raw_text = text
         clean_text = self._clean_ocr_text(raw_text)
         text = self._clean_ocr_one_line(raw_text)
+           
+        vendor_name = self._find_vendor_name(text) 
+        invoice_number = self._find_invoice_number(text)
         
-        if file_path:
+        if (not vendor_name or not invoice_number) and file_path:
             filename_info = extract_vendor_invoice_from_filename(file_path)
             vendor_name = filename_info.get("vendor_name")
-            invoice_number = filename_info.get("invoice_number") 
-        else:
-            vendor_name = self._find_vendor_name(text) 
-            invoice_number = self._find_invoice_number(text)
+            invoice_number = filename_info.get("invoice_number")
 
         service_address = self._find_service_center_address(text)
         ship_to_address = self._find_ship_to_address(text)
