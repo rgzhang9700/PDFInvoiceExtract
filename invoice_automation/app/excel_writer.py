@@ -285,8 +285,8 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     # Invoicing Party / Supplier ID must stay text, so SAP IDs keep leading zeros.
     invoicing_party = str(invoice.get("vendor_id", "")).strip()
     set_if_exists(ws, row, headers, "INVOICINGPARTY", invoicing_party)
-
-    set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", as_text(invoice.get("invoice_number", "")))
+    set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", invoice.get("invoice_number", ""))
+    #set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", as_text(invoice.get("invoice_number", "")))
     
     set_date_if_exists(ws, row, headers, "DOCUMENTDATE", invoice_date)
     set_date_if_exists(ws, row, headers, "POSTINGDATE", posting_date)
