@@ -30,6 +30,7 @@ def extract_vendor_invoice_from_filename(file_path):
     patterns = [
         r"^(.+?)\s+INV\s*#?\s*([A-Z0-9.-]{5,})(?:\s.*)?$",
         r"^(.+?)\s+([A-Z0-9.-]{6,})(?:\s.*)?$",
+        r"^\s*(.+?)\s+((?:INV\s*)?\d[\w.-]*)\s*\.pdf$", #Romain
     ]
 
     for pattern in patterns:
@@ -408,7 +409,7 @@ class BaseInvoiceParser(ABC):
             r"(jiffy\s*lube|jiffylube|jefflube|Continental\s+Tire\s+the\s+Americas|\bDITCH\s+WITCH\s+OF\s+CENTRAL\s+TEXAS\b)",
             r"(THE\s+CHARLES\s+MACHINE\s+WORKS|FLEETPRIDE|LES\s+SCHWAB|Ditch\s+Witch\s+West|NAPA|Canby\s+Signs)",
             r"(Randall\s+Creek\s+Sweeping|RDO\s+EQUIPMENT\s+CO|PAPE\s+\n?MACHINERY|PAP[ÉE]\s+KENWORTH|TIPCO\s+TECHNOLOGIES)",
-            r"(\bALTEC\b|\bAERIAL\b|linemen-tools\.com)",
+            r"(\bALTEC\b|\bAERIAL\b|linemen-tools\.com|ROMAINE ELECTRIC)",
             r"(MODESTO\s+WELD(?:ING\s+PRODUCTS)?|\bPETERSON\b|\bRDO\b|RDO\s+EQUIPMENT\s+CO)",
         ]
 
