@@ -131,7 +131,7 @@ class ValvolineParser(BaseInvoiceParser):
             if matches:
                 value = matches[-1]
                 return value.replace(",", "").replace(" ", "")
-        return "100"
+        return "0.1"
 
     def _find_po_number(self, text):
         patterns = [
