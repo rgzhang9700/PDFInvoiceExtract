@@ -121,17 +121,18 @@ class ValvolineParser(BaseInvoiceParser):
                         r"Invoice\s+Total\s*:\s*\$?\s*([0-9,]+\.\d{2})",
                         r"Amount\s*Due\s*:\s*[$S8]?\s*([0-9,]+\.\d{2})",
                         r"Total\s+Amount\s+USD\s*\$\s*([\d,]+\.\d{2})",
-                        r"T\s*O\s*T\s*A\s*L\s*[$S]?\s*([0-9,]+(?:\.[0-9]{2})?)", #DENITIO's
-                        r"(?<!Sub\s)\bTotal\s*[:\-]?\s*[$S8]?\s*([0-9,]+\.\d{2})",
+                        r"(?<!SUB)(?<!SUB\s)(?<!SUB-)\bT\s*O\s*T\s*A\s*L\b\s*[$S]?\s*([0-9,]+(?:\.[0-9]{2})?)", #DENITIO's
+                        r"(?<!Sub)(?<!Sub\s)(?<!Sub-)\bTotal\b\s*[:\-]?\s*[$S8]?\s*([0-9,]+\.\d{2})",
                         r"AMOUNT\s+DUE[\s\S]{0,200}?(\d{1,3}(?:,\d{3})*\.\d{2})", #next row for data
                         r"\bTOTAL\b[\s\S]{0,80}?([0-9,]+\s*[.]\s*[0-9]{2})", #PAPE MACHINARY
                         r"INVOICE\s+TOTAL[\s\S]{0,300}?\b[0-9,]+\.\d{2}\s+[0-9,]+\.\d{2}\s+([0-9,]+\.\d{2})", #KIMBALL
+                        r"\bBalance\s+Due\b\s*[$S]?\s*([0-9,]+\.\d{2})",#ANTOCH
                         ]:
             matches = re.findall(pattern, text or "", re.IGNORECASE)
             if matches:
                 value = matches[-1]
                 return value.replace(",", "").replace(" ", "")
-        return "100"
+        return ""
 
     def _find_po_number(self, text):
         patterns = [
