@@ -32,6 +32,7 @@ def extract_vendor_invoice_from_filename(file_path):
         r"^(.+?)\s+INV\s*#?\s*([A-Z0-9.-]{5,})(?:\s.*)?$",
         r"^(.+?)\s+([A-Z0-9.-]{6,})(?:\s.*)?$",
         r"^\s*(.+?)\s+((?:INV\s*)?\d[\w.-]*)\s*\.pdf$", #Romain
+        r"^(.+?)\s+([A-Z0-9][A-Z0-9\-\.]*)$",
     ]
 
     for pattern in patterns:

@@ -92,6 +92,7 @@ class ValvolineParser(BaseInvoiceParser):
                     r"INVOICE\s+DATE[\s\S]{0,80}?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
                     r"INVOICE\s+DATE[\s\S]{0,80}?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s+\d{5,}",  
                     r"Invoice\s*Date\s*/\s*Time\s*:\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})",
+                    r"Date\s+Invoice\s+No\.?[\s\S]{0,200}?(\d{1,2}/\d{1,2}/\d{2,4})\s+\d+",
                 ]
   
         for pattern in patterns:
@@ -112,27 +113,28 @@ class ValvolineParser(BaseInvoiceParser):
         
     def _find_total(self, text):
         for pattern in [r"\bTotal\s+Due\s*[:\-]?\s*[$S8]?\s*([0-9,]+\.\d{2})",
-                        #r"\bTotal\s*[:\-]?\s*[$S8]?\s*([0-9,]+\.\d{2})",
-                        #r"\bTotal\s*[:\-]?\s*[$S8]?\s*([0-9,]+)",
                         r"Amount\s*due\s*[$8]?\s*([-\d,]+\.\d{2})",
                         r"Total\s+Amount\s+USD[\s\S]{0,80}?\$?\s*([0-9,]+\.\d{2})",
-                        r"PLEASE\s+PAY\s*>?\s*THIS\s+TOTAL\s*>?\s*([0-9,]+\.\d{2})", 
+                        r"PLEASE\s+PAY\s*>?\s*THIS\s+TOTAL\s*>?\s*([0-9,]+\.\d{2})",
                         r"PLEASE\s+PAY[\s\S]{0,120}?([0-9][0-9,\s]*[.]\s*\d\s*\d)",
                         r"Invoice\s+Total\s*:\s*\$?\s*([0-9,]+\.\d{2})",
                         r"Amount\s*Due\s*:\s*[$S8]?\s*([0-9,]+\.\d{2})",
                         r"Total\s+Amount\s+USD\s*\$\s*([\d,]+\.\d{2})",
-                        r"(?<!SUB)(?<!SUB\s)(?<!SUB-)\bT\s*O\s*T\s*A\s*L\b\s*[$S]?\s*([0-9,]+(?:\.[0-9]{2})?)", #DENITIO's
+                        r"AMOUNT\s+DUE[\s\S]{0,200}?(\d{1,3}(?:,\d{3})*\.\d{2})",
+                        r"INVOICE\s+TOTAL[\s\S]{0,300}?\b[0-9,]+\.\d{2}\s+[0-9,]+\.\d{2}\s+([0-9,]+\.\d{2})",
+                        # Existing ANTOCH pattern, kept.
+                        r"\bBalance\s+Due\b\s*[:\-]?\s*[$S8]?\s*([0-9,]+\.\d{2})",
+                        # Generic TOTAL patterns must be near bottom.
+                        r"Total\s+Invoice\s*-+\s*>([\s\S]{0,600}?)(?:Internal\s+Ref|TERMS|Email\s*:)",
+                        r"(?<!SUB)(?<!SUB\s)(?<!SUB-)\bT\s*O\s*T\s*A\s*L\b\s*[$S]?\s*([0-9,]+(?:\.[0-9]{2})?)",
                         r"(?<!Sub)(?<!Sub\s)(?<!Sub-)\bTotal\b\s*[:\-]?\s*[$S8]?\s*([0-9,]+\.\d{2})",
-                        r"AMOUNT\s+DUE[\s\S]{0,200}?(\d{1,3}(?:,\d{3})*\.\d{2})", #next row for data
-                        r"\bTOTAL\b[\s\S]{0,80}?([0-9,]+\s*[.]\s*[0-9]{2})", #PAPE MACHINARY
-                        r"INVOICE\s+TOTAL[\s\S]{0,300}?\b[0-9,]+\.\d{2}\s+[0-9,]+\.\d{2}\s+([0-9,]+\.\d{2})", #KIMBALL
-                        r"\bBalance\s+Due\b\s*[$S]?\s*([0-9,]+\.\d{2})",#ANTOCH
+                        r"\bTOTAL\b[\s\S]{0,80}?([0-9,]+\s*[.]\s*[0-9]{2})",
                         ]:
             matches = re.findall(pattern, text or "", re.IGNORECASE)
             if matches:
                 value = matches[-1]
                 return value.replace(",", "").replace(" ", "")
-        return "0.1"
+        return "0.10"
 
     def _find_po_number(self, text):
         patterns = [
