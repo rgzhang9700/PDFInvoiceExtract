@@ -265,6 +265,17 @@ def set_date_if_exists(ws, row, headers, field_name, value):
 
     cell.number_format = "mm/dd/yy"
 
+def set_text_if_exists(ws, row, headers, header_name, value=""):
+    """
+    Write value as Excel text.
+    Use this for Reference, Invoicing Party, invoice number, vendor ID, etc.
+    """
+    col = headers.get(header_name)
+
+    if col:
+        cell = ws.cell(row=row, column=col)
+        cell.number_format = "@"
+        cell.value = "" if value is None else str(value).strip()
 
 def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, line_number):
     amount = to_number(invoice.get("amount", ""))
@@ -285,9 +296,8 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     # Invoicing Party / Supplier ID must stay text, so SAP IDs keep leading zeros.
     invoicing_party = str(invoice.get("vendor_id", "")).strip()
     set_if_exists(ws, row, headers, "INVOICINGPARTY", invoicing_party)
-    set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", invoice.get("invoice_number", ""))
-    #set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", as_text(invoice.get("invoice_number", "")))
-    
+    #set_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", invoice.get("invoice_number", ""))
+    set_text_if_exists(ws, row, headers, "SUPPLIERINVOICEIDBYINVCGPARTY", invoice.get("invoice_number", ""))
     set_date_if_exists(ws, row, headers, "DOCUMENTDATE", invoice_date)
     set_date_if_exists(ws, row, headers, "POSTINGDATE", posting_date)
     set_if_exists(ws, row, headers, "ACCOUNTINGDOCUMENTTYPE", excel_config.get("accounting_document_type", "NS"))
@@ -295,7 +305,7 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     set_if_exists(ws, row, headers, "DOCUMENTCURRENCY", excel_config.get("document_currency", "USD"))
     set_if_exists(ws, row, headers, "INVOICEGROSSAMOUNT", amount)
 
-    set_if_exists(ws, row, headers, "GLACCOUNT", (invoice.get("GLAccount") or "51000100"))
+    set_if_exists(ws, row, headers, "GLACCOUNT", (invoice.get("GLAccount") or invoice.get("gl_account") or "51000100"))
     set_if_exists(ws, row, headers, "DEBITCREDITCODE", "S")
     set_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMAMOUNT", amount)
     set_if_exists(ws, row, headers, "TAXCODE", vendor_config.get("tax_code", ""))
@@ -303,7 +313,8 @@ def write_invoice_row(ws, row, headers, invoice, vendor_config, excel_config, li
     set_text_format_if_exists(ws, row, headers, "SUPPLIERINVOICEITEMTEXT")
     set_if_exists(ws, row, headers, "TAXJURISDICTION", TaxCenterID)
     set_if_exists(ws, row, headers, "COSTCENTER", vendor_config.get("cost_center", ""))
-
+    set_if_exists(ws, row, headers, "ZZ1_PAYEE_MIH", (invoice.get("Payee") or invoice.get("payee") or ""))
+    
     # Force SAP upload columns to the correct Excel formats.
     # D = Invoicing Party; K = Gross Invoice Amount; BW = line item amount in this template.
     set_text_format_if_exists(ws, row, headers, "INVOICINGPARTY")
