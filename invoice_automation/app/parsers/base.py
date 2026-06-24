@@ -409,7 +409,7 @@ class BaseInvoiceParser(ABC):
         patterns = [
             r"(VALVOLINE(?:\s+INSTANT\s+OIL\s+CHANGE)?|\bDELTA\s+TRUCK\s+CENTER\b|HYDRAULIC CONTROLS|WAGNER-SMITH EQUIPMENT CO)",
             r"(jiffy\s*lube|jiffylube|jefflube|Continental\s+Tire\s+the\s+Americas|\bDITCH\s+WITCH\s+OF\s+CENTRAL\s+TEXAS\b)",
-            r"(THE\s+CHARLES\s+MACHINE\s+WORKS|FLEETPRIDE|LES\s+SCHWAB|Ditch\s+Witch\s+West|NAPA|Canby\s+Signs)",
+            r"(THE\s+CHARLES\s+MACHINE\s+WORKS|FLEETPRIDE|LES\s+SCHWAB|Ditch\s+Witch\s+West|Canby\s+Signs)",
             r"(Randall\s+Creek\s+Sweeping|RDO\s+EQUIPMENT\s+CO|PAPE\s+\n?MACHINERY|PAP[ÉE]\s+KENWORTH|TIPCO\s+TECHNOLOGIES)",
             r"(\bALTEC\b|\bAERIAL\b|linemen-tools\.com|ROMAINE ELECTRIC)",
             r"(MODESTO\s+WELD(?:ING\s+PRODUCTS)?|\bPETERSON\b|\bRDO\b|RDO\s+EQUIPMENT\s+CO)",
